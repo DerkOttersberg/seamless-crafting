@@ -29,7 +29,12 @@ processResources {
 tasks.named('jar', Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     exclude 'META-INF/MANIFEST.MF'
-    manifest { attributes 'Automatic-Module-Name': 'io.github.derkottersberg.seamlesscrafting' }
+    manifest {
+        attributes(
+                'Automatic-Module-Name': 'io.github.derkottersberg.seamlesscrafting',
+                'MixinConfigs': 'seamless_crafting.mixins.json'
+        )
+    }
     archiveFileName = "${rootProject.archives_base_name}-${project.version}-forge.jar"
 }
 tasks.named('sourcesJar', Jar) {

@@ -1,2 +1,3 @@
 Manifest-Version: 1.0
 Automatic-Module-Name: io.github.derkottersberg.seamlesscrafting
+MixinConfigs: seamless_crafting.mixins.json

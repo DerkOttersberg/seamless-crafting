@@ -5,6 +5,7 @@ import com.derk.easyinventorycrafter.client.NearbyItemsClientState;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import io.github.derkottersberg.seamlesscrafting.client.render.HighlightBox;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -167,19 +168,19 @@ public abstract class LevelRendererMixin {
         HighlightBox box,
         int color
     ) {
-        float minX = box.minX - HIGHLIGHT_FACE_OFFSET;
-        float minY = box.minY - HIGHLIGHT_FACE_OFFSET;
-        float minZ = box.minZ - HIGHLIGHT_FACE_OFFSET;
-        float maxX = box.maxX + HIGHLIGHT_FACE_OFFSET;
-        float maxY = box.maxY + HIGHLIGHT_FACE_OFFSET;
-        float maxZ = box.maxZ + HIGHLIGHT_FACE_OFFSET;
+        float minX = box.minX() - HIGHLIGHT_FACE_OFFSET;
+        float minY = box.minY() - HIGHLIGHT_FACE_OFFSET;
+        float minZ = box.minZ() - HIGHLIGHT_FACE_OFFSET;
+        float maxX = box.maxX() + HIGHLIGHT_FACE_OFFSET;
+        float maxY = box.maxY() + HIGHLIGHT_FACE_OFFSET;
+        float maxZ = box.maxZ() + HIGHLIGHT_FACE_OFFSET;
 
-        derk$addQuad(consumer, matrix, minX, box.minY, minZ, maxX, box.minY, minZ, maxX, box.maxY, minZ, minX, box.maxY, minZ, color);
-        derk$addQuad(consumer, matrix, maxX, box.minY, maxZ, minX, box.minY, maxZ, minX, box.maxY, maxZ, maxX, box.maxY, maxZ, color);
-        derk$addQuad(consumer, matrix, minX, box.minY, maxZ, minX, box.minY, minZ, minX, box.maxY, minZ, minX, box.maxY, maxZ, color);
-        derk$addQuad(consumer, matrix, maxX, box.minY, minZ, maxX, box.minY, maxZ, maxX, box.maxY, maxZ, maxX, box.maxY, minZ, color);
-        derk$addQuad(consumer, matrix, box.minX, maxY, box.minZ, box.maxX, maxY, box.minZ, box.maxX, maxY, box.maxZ, box.minX, maxY, box.maxZ, color);
-        derk$addQuad(consumer, matrix, box.minX, minY, box.maxZ, box.maxX, minY, box.maxZ, box.maxX, minY, box.minZ, box.minX, minY, box.minZ, color);
+        derk$addQuad(consumer, matrix, minX, box.minY(), minZ, maxX, box.minY(), minZ, maxX, box.maxY(), minZ, minX, box.maxY(), minZ, color);
+        derk$addQuad(consumer, matrix, maxX, box.minY(), maxZ, minX, box.minY(), maxZ, minX, box.maxY(), maxZ, maxX, box.maxY(), maxZ, color);
+        derk$addQuad(consumer, matrix, minX, box.minY(), maxZ, minX, box.minY(), minZ, minX, box.maxY(), minZ, minX, box.maxY(), maxZ, color);
+        derk$addQuad(consumer, matrix, maxX, box.minY(), minZ, maxX, box.minY(), maxZ, maxX, box.maxY(), maxZ, maxX, box.maxY(), minZ, color);
+        derk$addQuad(consumer, matrix, box.minX(), maxY, box.minZ(), box.maxX(), maxY, box.minZ(), box.maxX(), maxY, box.maxZ(), box.minX(), maxY, box.maxZ(), color);
+        derk$addQuad(consumer, matrix, box.minX(), minY, box.maxZ(), box.maxX(), minY, box.maxZ(), box.maxX(), minY, box.minZ(), box.minX(), minY, box.minZ(), color);
     }
 
     private static void derk$addQuad(
@@ -195,8 +196,5 @@ public abstract class LevelRendererMixin {
         consumer.addVertex(matrix, x2, y2, z2).setColor(color);
         consumer.addVertex(matrix, x3, y3, z3).setColor(color);
         consumer.addVertex(matrix, x4, y4, z4).setColor(color);
-    }
-
-    private record HighlightBox(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
     }
 }
