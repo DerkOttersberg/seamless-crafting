@@ -1,13 +1,13 @@
 modLoader="javafml"
 loaderVersion="[1,)"
 license="All Rights Reserved"
-issueTrackerURL="https://github.com/DerkOttersberg/Seamless-Crafting/issues"
+issueTrackerURL="https://github.com/DerkOttersberg/seamless-crafting/issues"
 
 [[mods]]
 modId="derk_easy_inventory_crafter"
 version="${mod_version}"
 displayName="Seamless Crafting"
-displayURL="https://github.com/DerkOttersberg/Seamless-Crafting"
+displayURL="https://github.com/DerkOttersberg/seamless-crafting"
 authors="Derk Ottersberg"
 description='''Craft directly from nearby containers with recipe-book support, item-safe returns, and container highlighting.'''
 

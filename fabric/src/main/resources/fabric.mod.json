@@ -6,8 +6,8 @@
   "description": "Craft directly from nearby containers with recipe-book support, item-safe returns, and container highlighting.",
   "authors": ["Derk Ottersberg"],
   "contact": {
-    "sources": "https://github.com/DerkOttersberg/Seamless-Crafting",
-    "issues": "https://github.com/DerkOttersberg/Seamless-Crafting/issues"
+    "sources": "https://github.com/DerkOttersberg/seamless-crafting",
+    "issues": "https://github.com/DerkOttersberg/seamless-crafting/issues"
   },
   "license": "CC0-1.0",
   "environment": "*",
