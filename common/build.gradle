@@ -1,0 +1,11 @@
+plugins { id 'dev.architectury.loom-no-remap' }
+base { archivesName = rootProject.archives_base_name }
+dependencies {
+    minecraft libs.minecraft
+    compileOnly libs.fabric.loader
+    testImplementation platform(libs.junit.bom)
+    testImplementation libs.junit.jupiter
+    testRuntimeOnly libs.junit.platform.launcher
+}
+tasks.named('jar', Jar) { archiveFileName = "${rootProject.archives_base_name}-${project.version}-common.jar" }
+tasks.named('sourcesJar', Jar) { archiveFileName = "${rootProject.archives_base_name}-${project.version}-common-sources.jar" }

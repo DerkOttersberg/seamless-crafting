@@ -1,0 +1,27 @@
+plugins { id 'dev.architectury.loom-no-remap' }
+base { archivesName = rootProject.archives_base_name }
+dependencies {
+    minecraft libs.minecraft
+    neoForge libs.neoforge
+    implementation project(':common')
+}
+loom { mods { seamlesscrafting { sourceSet sourceSets.main; sourceSet project(':common').sourceSets.main } } }
+def metadataProperties = [
+    mod_version: project.version.toString(),
+    neo_version_range: '[26.2.0.75,26.3)',
+    minecraft_version_range: '[26.2,26.3)'
+]
+processResources {
+    inputs.properties metadataProperties
+    filesMatching('META-INF/neoforge.mods.toml') { expand metadataProperties }
+}
+tasks.named('jar', Jar) {
+    from project(':common').sourceSets.main.output
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveFileName = "${rootProject.archives_base_name}-${project.version}-neoforge.jar"
+}
+tasks.named('sourcesJar', Jar) {
+    from project(':common').sourceSets.main.allSource
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveFileName = "${rootProject.archives_base_name}-${project.version}-neoforge-sources.jar"
+}

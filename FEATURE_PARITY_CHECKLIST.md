@@ -1,34 +1,32 @@
-# Forge Port Feature Checklist
+# Minecraft 26.2 Feature and Verification Checklist
 
-Source parity reference: ../FEATURE_PARITY_SPEC.md
+## Implemented
 
-## Completed in this cycle
-- New standalone Forge 1.21.11 project created in this folder.
-- Mod metadata renamed to derk_easy_inventory_crafter / Bluethooth Chest.
-- Custom JSON config system implemented with defaults, clamping, and save/load.
-- Nearby inventory scanner implemented.
-- Packet channel implemented (request nearby, nearby payload, highlight request/response, return nearby).
-- Nearby sync service implemented on server side.
-- Client nearby-state cache implemented, including locate aim and particle trail behavior.
-- Crafting and inventory nearby-panel UI implemented (button, search, categorized sorting, scrolling, click-highlight, count overlay).
-- Client input routing mixins implemented for panel click/scroll/type handling and recipe-book key interception.
-- Client auto-refresh loop while crafting/inventory screens are open is implemented.
-- Runtime highlight feedback implemented (particle-based chest highlight + optional distance readout + snap/locate integration).
-- Project builds successfully with `gradlew build`.
-- Client runtime launches with `gradlew runClient` (no hard crash observed in launch smoke test).
+- [x] Nearby panels in crafting-table and player-inventory screens
+- [x] Search, sorting, scrolling, counts, locate action, and auto-refresh
+- [x] Nearby-assisted recipe-book availability and quick placement
+- [x] Server-authoritative withdrawal and safe return tracking
+- [x] Menu-close and disconnect cleanup
+- [x] Vanilla double-chest merging, locks, obstruction, and loot handling
+- [x] Bounded packets and unloaded-chunk avoidance
+- [x] Filled world-space highlights, distance labels, and locate trail
+- [x] Configuration and color-picker screens on all loaders
+- [x] Canonical configuration migration with retained backups
+- [x] Render-state/pipeline implementation without raw OpenGL
 
-## Still to port for full parity
-- Crafting-table withdrawal tracking and rollback/cancel mechanics in crafting menu internals.
-- Nearby-assisted autofill integration into recipe placement flow.
-- Recipe finder augmentation in crafting menus (server and client parity behavior).
-- Result-slot and autofill-triggered nearby refresh hooks.
-- Filled world-space box renderer parity for highlights (current implementation uses particle aura + distance readout).
-- Double chest merged bounding highlight parity for world-space renderer path.
-- Config GUI screens (main settings + color picker) and in-game entrypoint.
-- Spacebar one-set recipe quick place behavior.
-- All lifecycle edge cases and cleanup parity from Fabric mixins.
+## Automated verification
 
-## Validation gates pending
-- Build success after each subsystem addition.
-- runClient and dedicated runtime log checks after each subsystem.
-- End-to-end parity test pass against all items in FEATURE_PARITY_SPEC.md.
+- [x] Java 25 `clean check build`
+- [x] Fabric, Forge, and NeoForge metadata isolation
+- [x] Canonical double-chest key and merged-count accounting tests
+- [x] Count overflow saturation test
+- [x] Legacy and invalid configuration backup tests
+
+## Runtime smoke tests
+
+- [x] Fabric 26.2 client reaches title screen
+- [x] Forge 26.2 client reaches title screen
+- [x] NeoForge 26.2 client reaches title screen
+- [ ] Dedicated-server registration/networking GameTests
+- [ ] In-world item-conservation and disconnect matrix
+- [ ] Combined five-mod OpenGL and Vulkan profiles

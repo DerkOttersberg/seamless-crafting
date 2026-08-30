@@ -1,0 +1,32 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="All Rights Reserved"
+issueTrackerURL="https://github.com/DerkOttersberg/Seamless-Crafting/issues"
+
+[[mods]]
+modId="derk_easy_inventory_crafter"
+version="${mod_version}"
+displayName="Seamless Crafting"
+displayURL="https://github.com/DerkOttersberg/Seamless-Crafting"
+authors="Derk Ottersberg"
+description='''Craft directly from nearby containers with recipe-book support, item-safe returns, and container highlighting.'''
+
+[[mixins]]
+config="seamless_crafting.mixins.json"
+
+[[dependencies.derk_easy_inventory_crafter]]
+modId="neoforge"
+type="required"
+versionRange="${neo_version_range}"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.derk_easy_inventory_crafter]]
+modId="minecraft"
+type="required"
+versionRange="${minecraft_version_range}"
+ordering="NONE"
+side="BOTH"
+
+[features.derk_easy_inventory_crafter]
+javaVersion="[25,)"

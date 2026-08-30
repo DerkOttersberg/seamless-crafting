@@ -20,6 +20,10 @@ build
 # other
 eclipse
 run
+runs
+logs
+crash-reports
+/net/
 
 # Files from Forge MDK
 forge_README.txt

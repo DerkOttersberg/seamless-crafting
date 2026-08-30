@@ -1,0 +1,38 @@
+plugins { id 'dev.architectury.loom-no-remap' }
+base { archivesName = rootProject.archives_base_name }
+
+sourceSets.main {
+    java.srcDir rootProject.file('common/src/main/java')
+    resources.srcDir rootProject.file('common/src/main/resources')
+}
+
+configurations.forgeRuntimeLibrary {
+    exclude group: 'dev.architectury', module: 'architectury-naming-service'
+    exclude group: 'dev.architectury', module: 'architectury-mixin-remapper-service'
+}
+
+dependencies {
+    minecraft libs.minecraft
+    forge libs.forge
+}
+loom { mods { seamlesscrafting { sourceSet sourceSets.main } } }
+def metadataProperties = [
+    mod_version: project.version.toString(),
+    loader_version_range: '[65,)',
+    forge_version_range: '[65.1.3,66)',
+    minecraft_version_range: '[26.2,26.3)'
+]
+processResources {
+    inputs.properties metadataProperties
+    filesMatching('META-INF/mods.toml') { expand metadataProperties }
+}
+tasks.named('jar', Jar) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude 'META-INF/MANIFEST.MF'
+    manifest { attributes 'Automatic-Module-Name': 'io.github.derkottersberg.seamlesscrafting' }
+    archiveFileName = "${rootProject.archives_base_name}-${project.version}-forge.jar"
+}
+tasks.named('sourcesJar', Jar) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveFileName = "${rootProject.archives_base_name}-${project.version}-forge-sources.jar"
+}

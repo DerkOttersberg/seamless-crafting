@@ -1,0 +1,26 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.derk.easyinventorycrafter.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "AbstractCraftingMenuMixin",
+    "CraftingMenuAccessor",
+    "CraftingMenuMixin",
+    "InventoryMenuMixin",
+    "ResultSlotMixin",
+    "ServerPlaceRecipeMixin"
+  ],
+  "client": [
+    "AbstractContainerScreenMixin",
+    "AbstractCraftingMenuClientMixin",
+    "AbstractRecipeBookScreenMixin",
+    "CraftingScreenMixin",
+    "InventoryScreenMixin",
+    "LevelRendererMixin",
+    "RecipeBookComponentMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
