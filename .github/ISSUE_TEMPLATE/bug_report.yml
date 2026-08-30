@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible nearby-crafting, inventory, or networking problem.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: dropdown
+    id: loader
+    attributes:
+      label: Loader
+      options: [Fabric, Forge, NeoForge]
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Minecraft, mod, and loader versions
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Recipe and nearby-container setup
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log excerpt
+      render: shell
