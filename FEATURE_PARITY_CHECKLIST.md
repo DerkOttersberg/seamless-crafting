@@ -21,12 +21,15 @@
 - [x] Canonical double-chest key and merged-count accounting tests
 - [x] Count overflow saturation test
 - [x] Legacy and invalid configuration backup tests
+- [x] Live double-chest deduplication and two-half highlighting GameTest
+- [x] Live recipe-book withdrawal, cancellation, and item-conservation GameTest
 
 ## Runtime smoke tests
 
 - [x] Fabric 26.2 client reaches title screen
 - [x] Forge 26.2 client reaches title screen
 - [x] NeoForge 26.2 client reaches title screen
-- [ ] Dedicated-server registration/networking GameTests
-- [ ] In-world item-conservation and disconnect matrix
-- [ ] Combined five-mod OpenGL and Vulkan profiles
+- [x] Fabric, Forge, and NeoForge combined dedicated-server boots
+- [x] In-world nearby item withdrawal and cancellation conservation
+- [ ] Disconnect/reconnect and menu-close conservation matrix
+- [x] Combined five-mod OpenGL and Vulkan profiles

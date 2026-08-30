@@ -7,6 +7,21 @@ dependencies {
     implementation project(':common')
 }
 loom { mods { seamless_crafting { sourceSet sourceSets.main; sourceSet project(':common').sourceSets.main } } }
+
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = 'seamless-crafting-gametest'
+        enableGameTests = true
+        enableClientGameTests = false
+        eula = true
+    }
+}
+
+dependencies {
+    gametestImplementation project(':common')
+}
+
 def metadataVersion = project.version.toString()
 processResources {
     inputs.property 'version', metadataVersion

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "seamless-crafting-gametest",
+  "version": "1.0.0",
+  "name": "Seamless Crafting GameTests",
+  "environment": "server",
+  "entrypoints": {
+    "fabric-gametest": [
+      "io.github.derkottersberg.seamlesscrafting.fabric.gametest.SeamlessCraftingGameTests"
+    ]
+  },
+  "depends": {
+    "seamless_crafting": "*",
+    "fabric-gametest-api-v1": "*"
+  }
+}

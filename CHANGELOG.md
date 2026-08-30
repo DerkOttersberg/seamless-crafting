@@ -18,5 +18,6 @@
   submission, compatible with both rendering backends.
 - Migrated legacy and misspelled configuration filenames to
   `seamless-crafting.json`, retaining backups.
-- Added accounting and configuration migration tests plus loader metadata
-  isolation checks.
+- Added accounting and configuration migration tests, loader metadata
+  isolation checks, and live GameTests for double-chest deduplication and
+  server-authoritative withdrawal/cancellation conservation.
