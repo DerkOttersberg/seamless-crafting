@@ -38,6 +38,12 @@ public class AbstractRecipeBookScreenMixin implements NearbyRecipeBookRefreshAcc
 
     @Override
     public void derk$refreshNearbyRecipeBook() {
-        ((NearbyRecipeBookComponentAccess) recipeBookComponent).derk$refreshStackedContents();
+        // A hidden recipe book has not created its tab widgets yet. Calling
+        // updateStackedContents in that state reaches updateCollections with a
+        // null selectedTab on Minecraft 26.2. Vanilla initializes the tabs when
+        // the book is opened, so defer the nearby refresh until it is visible.
+        if (recipeBookComponent.isVisible()) {
+            ((NearbyRecipeBookComponentAccess) recipeBookComponent).derk$refreshStackedContents();
+        }
     }
 }
