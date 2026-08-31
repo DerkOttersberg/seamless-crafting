@@ -32,4 +32,4 @@
 - [x] Fabric, Forge, and NeoForge combined dedicated-server boots
 - [x] In-world nearby item withdrawal and cancellation conservation
 - [ ] Disconnect/reconnect and menu-close conservation matrix
-- [x] Combined five-mod OpenGL and Vulkan profiles
+- [x] Combined four-mod OpenGL and Vulkan profiles
