@@ -1,79 +1,95 @@
 package io.github.derkottersberg.seamlesscrafting.forge.gametest;
 
 import com.derk.easyinventorycrafter.gametest.SeamlessCraftingGameTestScenario;
-import io.github.derkottersberg.seamlesscrafting.forge.ForgeNearbyStorageScenario;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.registries.RegisterEvent;
 
+@Mod(SeamlessCraftingForgeGameTests.MOD_ID)
 public final class SeamlessCraftingForgeGameTests {
-    private SeamlessCraftingForgeGameTests() {
+    public static final String MOD_ID = "derk_easy_inventory_crafter_gametest";
+    private static final String TEST_NAMESPACE = "derk_easy_inventory_crafter";
+
+    public SeamlessCraftingForgeGameTests(FMLJavaModLoadingContext context) {
+        RegisterEvent.getBus(context.getModBusGroup())
+            .addListener(SeamlessCraftingForgeGameTests::registerTestFunctions);
     }
 
-    public static void registerAll(BiConsumer<String, Supplier<?>> registrar) {
+    private static void registerTestFunctions(RegisterEvent event) {
+        if (event.getRegistryKey() != Registries.TEST_FUNCTION) {
+            return;
+        }
         register(
-            registrar,
+            event,
             "scans_double_chest_once",
             () -> SeamlessCraftingGameTestScenario::scansDoubleChestOnce
         );
         register(
-            registrar,
+            event,
             "returns_enchanted_ingredients_exactly",
             () -> SeamlessCraftingGameTestScenario::returnsEnchantedIngredientsExactly
         );
         register(
-            registrar,
+            event,
             "crafts_maximum_exact_components_and_returns_them",
             () -> SeamlessCraftingGameTestScenario::craftsMaximumExactComponentsAndReturnsThem
         );
         register(
-            registrar,
+            event,
             "rolls_back_after_partial_commit_extraction",
             () -> SeamlessCraftingGameTestScenario::rollsBackAfterPartialCommitExtraction
         );
         register(
-            registrar,
+            event,
             "respects_locked_containers",
             () -> SeamlessCraftingGameTestScenario::respectsLockedContainers
         );
         register(
-            registrar,
+            event,
             "does_not_load_chunks_while_scanning",
             () -> SeamlessCraftingGameTestScenario::doesNotLoadChunksWhileScanning
         );
         register(
-            registrar,
+            event,
             "rejects_incomplete_placement_without_mutation",
             () -> SeamlessCraftingGameTestScenario::rejectsIncompletePlacementWithoutMutation
         );
         register(
-            registrar,
+            event,
             "chooses_matching_component_variant_before_commit",
             () -> SeamlessCraftingGameTestScenario::choosesMatchingComponentVariantBeforeCommit
         );
         register(
-            registrar,
+            event,
             "preserves_packet_bounds_and_stack_identity",
             () -> SeamlessCraftingGameTestScenario::preservesPacketBoundsAndStackIdentity
         );
         register(
-            registrar,
+            event,
             "rejects_broken_storage_contracts_and_deduplicates",
             () -> SeamlessCraftingGameTestScenario::rejectsBrokenStorageContractsAndDeduplicates
         );
         register(
-            registrar,
+            event,
             "verifies_standard_storage_adapter",
             () -> ForgeNearbyStorageScenario::verifiesStandardStorageAdapter
         );
     }
 
     private static void register(
-        BiConsumer<String, Supplier<?>> registrar,
+        RegisterEvent event,
         String name,
         Supplier<Consumer<GameTestHelper>> function
     ) {
-        registrar.accept(name, function);
+        event.register(
+            Registries.TEST_FUNCTION,
+            Identifier.fromNamespaceAndPath(TEST_NAMESPACE, name),
+            function
+        );
     }
 }

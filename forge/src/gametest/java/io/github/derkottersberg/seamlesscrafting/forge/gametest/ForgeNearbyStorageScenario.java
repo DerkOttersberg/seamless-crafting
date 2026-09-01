@@ -1,4 +1,4 @@
-package io.github.derkottersberg.seamlesscrafting.forge;
+package io.github.derkottersberg.seamlesscrafting.forge.gametest;
 
 import com.derk.easyinventorycrafter.StackIdentity;
 import com.derk.easyinventorycrafter.NearbyInventoryScanner;
@@ -34,9 +34,23 @@ public final class ForgeNearbyStorageScenario {
             helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.UNBREAKING),
             1
         );
-        ItemStackHandler handler = new ItemStackHandler(2);
+        BlockPos capabilityPos = new BlockPos(1, 1, 1);
+        helper.setBlock(capabilityPos, Blocks.TEST_BLOCK.defaultBlockState());
+        BlockPos absoluteCapabilityPos = helper.absolutePos(capabilityPos);
+        CapabilityOnlyBlockEntity capabilityOnly = new CapabilityOnlyBlockEntity(
+            absoluteCapabilityPos,
+            helper.getLevel().getBlockState(absoluteCapabilityPos)
+        );
+        ItemStackHandler handler = capabilityOnly.items;
         handler.setStackInSlot(0, enchanted.copy());
-        ForgeNearbyStorage storage = new ForgeNearbyStorage(handler, BlockPos.ZERO);
+        helper.getLevel().setBlockEntity(capabilityOnly);
+        Player player = helper.makeMockServerPlayerInLevel();
+        player.getInventory().clearContent();
+        BlockPos playerPos = helper.absolutePos(new BlockPos(1, 1, 3));
+        player.setPos(playerPos.getX() + 0.5D, playerPos.getY(), playerPos.getZ() + 0.5D);
+        var discovered = NearbyInventoryScanner.scan(helper.getLevel(), player.blockPosition(), 4, player);
+        helper.assertValueEqual(discovered.size(), 1, "Forge lookup did not discover a capability-only block entity");
+        NearbyStorage storage = discovered.getFirst().storage();
 
         NearbyStorage.SlotSnapshot source = storage.snapshot().getFirst();
         helper.assertValueEqual(source.amount(), 4L, "Forge storage snapshot lost items");
@@ -56,21 +70,8 @@ public final class ForgeNearbyStorageScenario {
         helper.assertTrue(ItemStack.isSameItemSameComponents(handler.getStackInSlot(1), enchanted), "Forge rollback changed components");
         helper.assertValueEqual(handler.getStackInSlot(1).getCount(), 4, "Forge extraction/rollback violated conservation");
 
-        BlockPos capabilityPos = new BlockPos(1, 1, 1);
-        helper.setBlock(capabilityPos, Blocks.TEST_BLOCK.defaultBlockState());
-        BlockPos absoluteCapabilityPos = helper.absolutePos(capabilityPos);
-        CapabilityOnlyBlockEntity capabilityOnly = new CapabilityOnlyBlockEntity(
-            absoluteCapabilityPos,
-            helper.getLevel().getBlockState(absoluteCapabilityPos)
-        );
-        capabilityOnly.items.setStackInSlot(0, enchanted.copy());
-        helper.getLevel().setBlockEntity(capabilityOnly);
-        Player player = helper.makeMockServerPlayerInLevel();
-        player.getInventory().clearContent();
-        BlockPos playerPos = helper.absolutePos(new BlockPos(1, 1, 3));
-        player.setPos(playerPos.getX() + 0.5D, playerPos.getY(), playerPos.getZ() + 0.5D);
-        var discovered = NearbyInventoryScanner.scan(helper.getLevel(), player.blockPosition(), 4, player);
-        helper.assertValueEqual(discovered.size(), 1, "Forge lookup did not discover a capability-only block entity");
+        handler.setStackInSlot(0, enchanted.copy());
+        handler.setStackInSlot(1, ItemStack.EMPTY);
         helper.assertValueEqual(
             NearbyInventoryScanner.collectItemCounts(List.of(discovered.getFirst().storage())).getFirst().count(),
             4L,
@@ -85,7 +86,7 @@ public final class ForgeNearbyStorageScenario {
     }
 
     private static final class CapabilityOnlyBlockEntity extends BlockEntity {
-        private final ItemStackHandler items = new ItemStackHandler(1);
+        private final ItemStackHandler items = new ItemStackHandler(2);
         private final LazyOptional<IItemHandler> itemCapability = LazyOptional.of(() -> items);
 
         private CapabilityOnlyBlockEntity(BlockPos pos, BlockState state) {

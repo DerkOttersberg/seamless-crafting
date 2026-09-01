@@ -9,8 +9,9 @@ sourceSets.main {
 sourceSets {
     gametest {
         java.srcDirs = ['src/gametest/java', rootProject.file('common/src/gametest/java')]
+        resources.srcDirs = ['src/gametest/resources']
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+        runtimeClasspath += output + sourceSets.main.runtimeClasspath
     }
 }
 
@@ -32,6 +33,8 @@ loom {
     mods {
         seamlesscrafting {
             sourceSet sourceSets.main
+        }
+        seamlesscraftinggametest {
             sourceSet sourceSets.gametest
         }
     }
