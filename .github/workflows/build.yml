@@ -16,12 +16,24 @@ jobs:
       - uses: gradle/actions/wrapper-validation@v4
 
   loader:
-    name: ${{ matrix.loader }}
+    name: ${{ matrix.id }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        loader: [fabric, forge, neoforge]
+        include:
+          - id: fabric-api-0.158
+            loader: fabric
+            gradle_args: -PfabricApiVersion=0.158.0+26.2
+          - id: fabric
+            loader: fabric
+            gradle_args: -PfabricApiVersion=0.159.0+26.2
+          - id: forge
+            loader: forge
+            gradle_args: ''
+          - id: neoforge
+            loader: neoforge
+            gradle_args: ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -29,17 +41,51 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew :common:check :${{ matrix.loader }}:build
+      - run: ./gradlew :common:check :${{ matrix.loader }}:check :${{ matrix.loader }}:build ${{ matrix.gradle_args }}
+      - name: Upload test reports and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ matrix.id }}
+          path: |
+            **/build/reports/**
+            **/build/test-results/**
+            **/build/run/gameTest/logs/**
+            **/build/gametest/logs/**
+            **/build/**/crash-reports/**
+          if-no-files-found: ignore
 
   verify:
     name: common-and-packaging
-    needs: loader
+    needs: [wrapper-validation, loader]
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     steps:
+      - name: Require successful protected prerequisite jobs
+        env:
+          WRAPPER_VALIDATION_RESULT: ${{ needs.wrapper-validation.result }}
+          LOADER_RESULT: ${{ needs.loader.result }}
+        run: |
+          if [[ "$WRAPPER_VALIDATION_RESULT" != "success" || "$LOADER_RESULT" != "success" ]]; then
+            echo "Required jobs failed: wrapper-validation=$WRAPPER_VALIDATION_RESULT loader=$LOADER_RESULT"
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew clean check build
+      - run: ./gradlew clean check build --no-parallel
+      - name: Upload aggregate reports and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-common-and-packaging
+          path: |
+            **/build/reports/**
+            **/build/test-results/**
+            **/build/run/gameTest/logs/**
+            **/build/gametest/logs/**
+            **/build/**/crash-reports/**
+          if-no-files-found: ignore

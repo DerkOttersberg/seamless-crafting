@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "structure": "minecraft:empty",
+  "function": "derk_easy_inventory_crafter:chooses_matching_component_variant_before_commit",
+  "max_ticks": 40,
+  "setup_ticks": 0,
+  "required": true
+}

@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "derk_easy_inventory_crafter:crafts_maximum_exact_components_and_returns_them",
+  "max_ticks": 40,
+  "required": true,
+  "setup_ticks": 0,
+  "structure": "minecraft:empty"
+}

@@ -1,5 +1,6 @@
 package io.github.derkottersberg.seamlesscrafting.forge;
 
+import com.derk.easyinventorycrafter.NearbyStorage;
 import com.derk.easyinventorycrafter.net.EasyInventoryCrafterNetwork;
 import com.derk.easyinventorycrafter.net.NearbyHighlightRequestPacket;
 import com.derk.easyinventorycrafter.net.NearbyHighlightResponsePacket;
@@ -11,6 +12,12 @@ import io.github.derkottersberg.seamlesscrafting.internal.PlatformServices;
 import java.nio.file.Path;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLEnvironment;
@@ -18,6 +25,7 @@ import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.network.Channel;
 import net.minecraftforge.network.ChannelBuilder;
 import net.minecraftforge.network.PacketDistributor;
+import org.jetbrains.annotations.Nullable;
 
 @Mod(SeamlessCraftingMod.FORGE_ID)
 public final class SeamlessCraftingForge {
@@ -86,6 +94,16 @@ public final class SeamlessCraftingForge {
         @Override
         public void sendToPlayer(ServerPlayer player, CustomPacketPayload payload) {
             NETWORK.send(payload, PacketDistributor.PLAYER.with(player));
+        }
+
+        @Override
+        @Nullable
+        public NearbyStorage findNearbyStorage(Level level, BlockPos pos, BlockState state, @Nullable BlockEntity blockEntity) {
+            if (blockEntity == null) {
+                return null;
+            }
+            IItemHandler handler = blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
+            return handler == null ? null : new ForgeNearbyStorage(handler, pos);
         }
     }
 }

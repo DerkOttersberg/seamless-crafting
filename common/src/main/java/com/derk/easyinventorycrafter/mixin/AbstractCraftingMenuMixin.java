@@ -1,8 +1,8 @@
 package com.derk.easyinventorycrafter.mixin;
 
 import com.derk.easyinventorycrafter.NearbyCraftingAccess;
-import com.derk.easyinventorycrafter.NearbyInventoryScanner;
 import com.derk.easyinventorycrafter.PendingNearbyWithdrawal;
+import com.derk.easyinventorycrafter.NearbyStorage;
 import com.derk.easyinventorycrafter.net.NearbyItemsSync;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,10 +11,8 @@ import java.util.List;
 import java.util.Map;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.AbstractCraftingMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.CraftingMenu;
@@ -69,7 +67,7 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
 
     @Override
     public void derk$recordNearbyWithdrawal(
-        Container inventory,
+        NearbyStorage inventory,
         int sourceSlot,
         int craftingSlotIndex,
         ItemStack stack,
@@ -160,33 +158,6 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
         }
     }
 
-    @Inject(method = "fillCraftSlotsStackedContents", at = @At("TAIL"))
-    private void derk$addNearbyItems(StackedItemContents contents, CallbackInfo ci) {
-        Player player = owner();
-        if (player.level().isClientSide()) {
-            return;
-        }
-
-        NearbyInventoryScanner.WorldPos worldPos = derk$getAccess()
-            .evaluate((level, pos) -> new NearbyInventoryScanner.WorldPos(level, pos))
-            .orElse(null);
-        if (worldPos == null) {
-            return;
-        }
-
-        List<Container> inventories = NearbyInventoryScanner.findNearbyInventories(
-            worldPos.level(),
-            worldPos.pos(),
-            NearbyInventoryScanner.getConfiguredRadius(),
-            player
-        );
-        for (Container inventory : inventories) {
-            for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-                contents.accountSimpleStack(inventory.getItem(slot));
-            }
-        }
-    }
-
     @Inject(method = "handlePlacement", at = @At("HEAD"))
     private void derk$markNearbyAutofillStart(
         boolean useMaxItems,
@@ -250,8 +221,7 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
                     }
 
                     ItemStack toReturn = withdrawal.templateStack().copyWithCount(removableCount);
-                    int insertedCount = derk$insertBackIntoInventory(
-                        withdrawal.sourceInventory(),
+                    int insertedCount = withdrawal.sourceInventory().insertExact(
                         withdrawal.sourceSlot(),
                         toReturn
                     );
@@ -267,7 +237,7 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
                     }
 
                     withdrawal.setRemainingCount(withdrawal.remainingCount() - insertedCount);
-                    withdrawal.sourceInventory().setChanged();
+                    withdrawal.sourceInventory().markChanged();
                     passChanged = true;
                     changed = true;
                     if (withdrawal.remainingCount() <= 0) {
@@ -287,53 +257,6 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
         if (changed && refreshAfter) {
             derk$refreshAfterNearbyTransfer();
         }
-    }
-
-    @Unique
-    private int derk$insertBackIntoInventory(Container inventory, int preferredSlot, ItemStack stack) {
-        int inserted = derk$tryInsertIntoSlot(inventory, preferredSlot, stack);
-        for (int slot = 0; slot < inventory.getContainerSize() && !stack.isEmpty(); slot++) {
-            if (slot != preferredSlot) {
-                inserted += derk$tryInsertIntoSlot(inventory, slot, stack);
-            }
-        }
-        return inserted;
-    }
-
-    @Unique
-    private int derk$tryInsertIntoSlot(Container inventory, int slotIndex, ItemStack stack) {
-        if (stack.isEmpty()
-            || slotIndex < 0
-            || slotIndex >= inventory.getContainerSize()
-            || !inventory.canPlaceItem(slotIndex, stack)) {
-            return 0;
-        }
-
-        ItemStack targetStack = inventory.getItem(slotIndex);
-        if (!targetStack.isEmpty() && !ItemStack.isSameItemSameComponents(targetStack, stack)) {
-            return 0;
-        }
-
-        int maxCount = Math.min(stack.getMaxStackSize(), inventory.getMaxStackSize(stack));
-        if (maxCount <= 0) {
-            return 0;
-        }
-
-        if (targetStack.isEmpty()) {
-            int inserted = Math.min(stack.getCount(), maxCount);
-            inventory.setItem(slotIndex, stack.copyWithCount(inserted));
-            stack.shrink(inserted);
-            return inserted;
-        }
-
-        int inserted = Math.min(stack.getCount(), maxCount - targetStack.getCount());
-        if (inserted <= 0) {
-            return 0;
-        }
-
-        targetStack.grow(inserted);
-        stack.shrink(inserted);
-        return inserted;
     }
 
     @Unique

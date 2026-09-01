@@ -29,18 +29,18 @@ class NearbyInventoryAccountingTest {
         );
 
         assertEquals(
-            Map.of("oak_log", 12, "cobblestone", 9),
+            Map.of("oak_log", 12L, "cobblestone", 9L),
             NearbyInventoryAccounting.totalCounts(List.of(leftHalf, rightHalf))
         );
     }
 
     @Test
     void countsSaturateInsteadOfOverflowing() {
-        var almostFull = List.of(new NearbyInventoryAccounting.Counted<>("stone", Integer.MAX_VALUE - 4));
+        var almostFull = List.of(new NearbyInventoryAccounting.Counted<>("stone", Long.MAX_VALUE - 4));
         var additional = List.of(new NearbyInventoryAccounting.Counted<>("stone", 64));
 
         assertEquals(
-            Integer.MAX_VALUE,
+            Long.MAX_VALUE,
             NearbyInventoryAccounting.totalCounts(List.of(almostFull, additional)).get("stone")
         );
     }

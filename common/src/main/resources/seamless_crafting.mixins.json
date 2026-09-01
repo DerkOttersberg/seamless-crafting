@@ -8,6 +8,7 @@
     "CraftingMenuAccessor",
     "CraftingMenuMixin",
     "InventoryMenuMixin",
+    "InventoryComponentCraftingMixin",
     "ResultSlotMixin",
     "ServerPlaceRecipeMixin"
   ],

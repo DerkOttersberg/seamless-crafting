@@ -3,14 +3,16 @@ package com.derk.easyinventorycrafter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.Container;
 import net.minecraft.world.RandomizableContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.ChestBlock;
@@ -19,10 +21,12 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
 import org.jetbrains.annotations.Nullable;
+import io.github.derkottersberg.seamlesscrafting.SeamlessCraftingMod;
 
 public final class NearbyInventoryScanner {
     public static final int DEFAULT_RADIUS = 16;
     public static final int MAX_ENTRIES = 512;
+    public static final long MAX_REPORTED_COUNT = 1L << 50;
     private static final Comparator<BlockPos> POSITION_ORDER = Comparator
         .comparingInt((BlockPos pos) -> pos.getX())
         .thenComparingInt(BlockPos::getY)
@@ -54,12 +58,20 @@ public final class NearbyInventoryScanner {
                 continue;
             }
 
+            BlockState state = level.getBlockState(pos);
             BlockEntity blockEntity = level.getBlockEntity(pos);
             if (!(blockEntity instanceof Container rawContainer) || rawContainer instanceof Inventory) {
+                if (blockEntity == null || !seenKeys.add(pos)) {
+                    continue;
+                }
+                NearbyStorage platformStorage = SeamlessCraftingMod.platform()
+                    .findNearbyStorage(level, pos, state, blockEntity);
+                if (platformStorage != null) {
+                    inventories.add(new NearbyInventory(platformStorage, pos, List.of(pos)));
+                }
                 continue;
             }
 
-            BlockState state = level.getBlockState(pos);
             BlockPos connectedPos = connectedChestPosition(level, pos, state);
             BlockPos key = canonicalInventoryKey(pos, connectedPos);
             if (!seenKeys.add(key)) {
@@ -92,50 +104,112 @@ public final class NearbyInventoryScanner {
             if (connectedPos != null) {
                 unpackLoot(level.getBlockEntity(connectedPos), player);
             }
-            inventories.add(new NearbyInventory(resolved, key, positions));
+            inventories.add(new NearbyInventory(new ContainerNearbyStorage(resolved, key, positions), key, positions));
         }
 
-        return inventories;
+        return deduplicateStorages(inventories);
     }
 
-    public static List<Container> findNearbyInventories(Level level, BlockPos center, int radius, Player player) {
-        return scan(level, center, radius, player).stream().map(NearbyInventory::container).toList();
+    /**
+     * Rejects storages that cannot prove exact, reversible extraction and
+     * collapses repeated views of the same backing handler by object identity.
+     */
+    public static List<NearbyInventory> deduplicateStorages(List<NearbyInventory> candidates) {
+        IdentityHashMap<Object, Integer> backingIndices = new IdentityHashMap<>();
+        List<NearbyInventory> accepted = new ArrayList<>();
+        for (NearbyInventory candidate : candidates) {
+            if (candidate == null || !NearbyStorageContract.isUsable(candidate.storage())) {
+                continue;
+            }
+
+            Object backing;
+            try {
+                backing = candidate.storage().identityKey();
+            } catch (RuntimeException ignored) {
+                continue;
+            }
+            Integer existingIndex = backingIndices.get(backing);
+            if (existingIndex == null) {
+                backingIndices.put(backing, accepted.size());
+                accepted.add(candidate);
+                continue;
+            }
+
+            NearbyInventory existing = accepted.get(existingIndex);
+            LinkedHashSet<BlockPos> mergedPositions = new LinkedHashSet<>(existing.positions());
+            mergedPositions.addAll(candidate.positions());
+            accepted.set(existingIndex, new NearbyInventory(
+                existing.storage(),
+                existing.key(),
+                List.copyOf(mergedPositions)
+            ));
+        }
+        return List.copyOf(accepted);
     }
 
-    public static List<NearbyItemEntry> collectItemCounts(List<Container> inventories) {
-        List<List<NearbyInventoryAccounting.Counted<Item>>> logicalInventories = new ArrayList<>();
-        for (Container inventory : inventories) {
-            List<NearbyInventoryAccounting.Counted<Item>> contents = new ArrayList<>();
-            for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-                ItemStack stack = inventory.getItem(slot);
-                if (!stack.isEmpty()) {
-                    contents.add(new NearbyInventoryAccounting.Counted<>(stack.getItem(), stack.getCount()));
-                }
+    public static List<NearbyStorage> findNearbyStorages(Level level, BlockPos center, int radius, Player player) {
+        return scan(level, center, radius, player).stream().map(NearbyInventory::storage).toList();
+    }
+
+    public static List<NearbyItemEntry> collectItemCounts(List<NearbyStorage> inventories) {
+        return collectNearbyItems(inventories).entries();
+    }
+
+    public static NearbyItemsSnapshot collectNearbyItems(List<NearbyStorage> inventories) {
+        List<List<NearbyInventoryAccounting.Counted<StackIdentity>>> logicalInventories = new ArrayList<>();
+        for (NearbyStorage inventory : inventories) {
+            List<NearbyInventoryAccounting.Counted<StackIdentity>> contents = new ArrayList<>();
+            for (NearbyStorage.SlotSnapshot snapshot : inventory.snapshot()) {
+                contents.add(new NearbyInventoryAccounting.Counted<>(StackIdentity.of(snapshot.stack()), snapshot.amount()));
             }
             logicalInventories.add(contents);
         }
 
-        return NearbyInventoryAccounting.totalCounts(logicalInventories).entrySet().stream()
-            .sorted(Comparator.comparing(entry -> entry.getKey().toString()))
-            .limit(MAX_ENTRIES)
-            .map(entry -> new NearbyItemEntry(new ItemStack(entry.getKey()), entry.getValue()))
-            .toList();
+        // Keep stable physical storage/slot encounter order. Stack component
+        // values are arbitrary mod-defined objects and do not have a general
+        // total ordering; exact identity belongs in equals/hashCode, not a
+        // lossy toString-based comparator.
+        List<Map.Entry<StackIdentity, Long>> totals = List.copyOf(
+            NearbyInventoryAccounting.totalCounts(logicalInventories).entrySet()
+        );
+        boolean truncated = totals.size() > MAX_ENTRIES;
+        List<NearbyItemEntry> entries = new ArrayList<>();
+        for (int index = 0; index < Math.min(totals.size(), MAX_ENTRIES); index++) {
+            Map.Entry<StackIdentity, Long> entry = totals.get(index);
+            long boundedCount = Math.min(entry.getValue(), MAX_REPORTED_COUNT);
+            truncated |= boundedCount != entry.getValue();
+            entries.add(new NearbyItemEntry(entry.getKey().stack(), boundedCount));
+        }
+
+        RecipeFinderResult recipeFinder = collectRecipeFinderResult(inventories);
+        return new NearbyItemsSnapshot(entries, recipeFinder.stacks(), truncated || recipeFinder.truncated());
     }
 
-    public static List<ItemStack> collectRecipeFinderStacks(List<Container> inventories) {
+    public static List<ItemStack> collectRecipeFinderStacks(List<NearbyStorage> inventories) {
+        return collectRecipeFinderResult(inventories).stacks();
+    }
+
+    private static RecipeFinderResult collectRecipeFinderResult(List<NearbyStorage> inventories) {
         List<ItemStack> stacks = new ArrayList<>();
-        for (Container inventory : inventories) {
-            for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-                ItemStack stack = inventory.getItem(slot);
-                if (!stack.isEmpty()) {
-                    stacks.add(stack.copy());
-                    if (stacks.size() >= MAX_ENTRIES) {
-                        return List.copyOf(stacks);
-                    }
+        for (int storageIndex = 0; storageIndex < inventories.size(); storageIndex++) {
+            List<NearbyStorage.SlotSnapshot> snapshots = inventories.get(storageIndex).snapshot();
+            for (int snapshotIndex = 0; snapshotIndex < snapshots.size(); snapshotIndex++) {
+                NearbyStorage.SlotSnapshot snapshot = snapshots.get(snapshotIndex);
+                long remaining = Math.min(snapshot.amount(), (long) snapshot.stack().getMaxStackSize() * 9L);
+                while (remaining > 0 && stacks.size() < MAX_ENTRIES) {
+                    int count = (int) Math.min(snapshot.stack().getMaxStackSize(), remaining);
+                    stacks.add(snapshot.stack().copyWithCount(count));
+                    remaining -= count;
+                }
+                if (stacks.size() >= MAX_ENTRIES) {
+                    boolean hasMore = remaining > 0
+                        || snapshotIndex + 1 < snapshots.size()
+                        || storageIndex + 1 < inventories.size();
+                    return new RecipeFinderResult(stacks, hasMore);
                 }
             }
         }
-        return List.copyOf(stacks);
+        return new RecipeFinderResult(stacks, false);
     }
 
     public static List<BlockPos> findInventoryPositionsWithItem(
@@ -143,11 +217,11 @@ public final class NearbyInventoryScanner {
         BlockPos center,
         int radius,
         Player player,
-        Item item
+        ItemStack requested
     ) {
         List<BlockPos> positions = new ArrayList<>();
         for (NearbyInventory inventory : scan(level, center, radius, player)) {
-            if (inventoryHasItem(inventory.container(), item)) {
+            if (inventoryHasItem(inventory.storage(), requested)) {
                 for (BlockPos pos : inventory.positions()) {
                     if (positions.size() >= MAX_ENTRIES) {
                         return List.copyOf(positions);
@@ -165,9 +239,9 @@ public final class NearbyInventoryScanner {
         BlockPos center,
         int radius,
         Player player,
-        Item item
+        ItemStack requested
     ) {
-        List<BlockPos> positions = findInventoryPositionsWithItem(level, center, radius, player, item);
+        List<BlockPos> positions = findInventoryPositionsWithItem(level, center, radius, player, requested);
         return positions.isEmpty() ? null : positions.getFirst();
     }
 
@@ -200,23 +274,56 @@ public final class NearbyInventoryScanner {
         }
     }
 
-    private static boolean inventoryHasItem(Container inventory, Item item) {
-        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-            ItemStack stack = inventory.getItem(slot);
-            if (!stack.isEmpty() && stack.is(item)) {
+    private static boolean inventoryHasItem(NearbyStorage inventory, ItemStack requested) {
+        StackIdentity identity = StackIdentity.of(requested);
+        for (NearbyStorage.SlotSnapshot snapshot : inventory.snapshot()) {
+            if (identity.matches(snapshot.stack())) {
                 return true;
             }
         }
         return false;
     }
 
-    public record NearbyInventory(Container container, BlockPos key, List<BlockPos> positions) {
+    public record NearbyInventory(NearbyStorage storage, BlockPos key, List<BlockPos> positions) {
         public NearbyInventory {
             positions = List.copyOf(positions);
         }
+
+        public Container container() {
+            if (storage instanceof ContainerNearbyStorage containerStorage) {
+                return containerStorage.container();
+            }
+            throw new IllegalStateException("Nearby storage is not a vanilla Container");
+        }
     }
 
-    public record NearbyItemEntry(ItemStack stack, int count) {
+    public record NearbyItemEntry(ItemStack stack, long count) {
+        public NearbyItemEntry {
+            if (stack == null || stack.isEmpty()) {
+                throw new IllegalArgumentException("entry stack must not be empty");
+            }
+            if (count <= 0) {
+                throw new IllegalArgumentException("entry count must be positive");
+            }
+            stack = stack.copyWithCount(1);
+        }
+    }
+
+    public record NearbyItemsSnapshot(
+        List<NearbyItemEntry> entries,
+        List<ItemStack> recipeFinderStacks,
+        boolean truncated
+    ) {
+        public NearbyItemsSnapshot {
+            entries = List.copyOf(entries);
+            recipeFinderStacks = recipeFinderStacks.stream().map(ItemStack::copy).toList();
+        }
+    }
+
+    private record RecipeFinderResult(List<ItemStack> stacks, boolean truncated) {
+        private RecipeFinderResult {
+            stacks = stacks.stream().map(ItemStack::copy).toList();
+        }
     }
 
     public record WorldPos(Level level, BlockPos pos) {

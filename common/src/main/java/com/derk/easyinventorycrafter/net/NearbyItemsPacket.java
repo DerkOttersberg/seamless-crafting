@@ -10,11 +10,35 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import io.github.derkottersberg.seamlesscrafting.SeamlessCraftingMod;
 
-public record NearbyItemsPacket(List<NearbyItemEntry> entries, List<ItemStack> recipeFinderStacks) implements CustomPacketPayload {
+public record NearbyItemsPacket(
+    List<NearbyItemEntry> entries,
+    List<ItemStack> recipeFinderStacks,
+    boolean truncated
+) implements CustomPacketPayload {
     public static final int MAX_ENTRIES = 512;
     public static final int MAX_RECIPE_STACKS = 512;
+    public static final long MAX_REPORTED_COUNT = com.derk.easyinventorycrafter.NearbyInventoryScanner.MAX_REPORTED_COUNT;
     public static final Type<NearbyItemsPacket> TYPE = new Type<>(SeamlessCraftingMod.networkId("nearby_items"));
     public static final StreamCodec<RegistryFriendlyByteBuf, NearbyItemsPacket> STREAM_CODEC = StreamCodec.of((buf, packet) -> packet.write(buf), NearbyItemsPacket::decode);
+
+    public NearbyItemsPacket {
+        entries = List.copyOf(entries);
+        recipeFinderStacks = recipeFinderStacks.stream().map(ItemStack::copy).toList();
+        if (entries.size() > MAX_ENTRIES) {
+            throw new IllegalArgumentException("Too many nearby item entries: " + entries.size());
+        }
+        if (recipeFinderStacks.size() > MAX_RECIPE_STACKS) {
+            throw new IllegalArgumentException("Too many nearby recipe stacks: " + recipeFinderStacks.size());
+        }
+        for (NearbyItemEntry entry : entries) {
+            if (entry.stack().isEmpty() || entry.count() <= 0 || entry.count() > MAX_REPORTED_COUNT) {
+                throw new IllegalArgumentException("Invalid nearby item entry");
+            }
+        }
+        if (recipeFinderStacks.stream().anyMatch(ItemStack::isEmpty)) {
+            throw new IllegalArgumentException("Nearby recipe stacks must not be empty");
+        }
+    }
 
     public static NearbyItemsPacket decode(RegistryFriendlyByteBuf buf) {
         int entryCount = buf.readVarInt();
@@ -24,7 +48,10 @@ public record NearbyItemsPacket(List<NearbyItemEntry> entries, List<ItemStack> r
         List<NearbyItemEntry> entries = new ArrayList<>(entryCount);
         for (int i = 0; i < entryCount; i++) {
             ItemStack stack = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
-            int count = buf.readVarInt();
+            long count = buf.readVarLong();
+            if (stack.isEmpty() || count <= 0 || count > MAX_REPORTED_COUNT) {
+                throw new IllegalArgumentException("Invalid nearby item entry");
+            }
             entries.add(new NearbyItemEntry(stack, count));
         }
 
@@ -34,25 +61,29 @@ public record NearbyItemsPacket(List<NearbyItemEntry> entries, List<ItemStack> r
         }
         List<ItemStack> recipeFinderStacks = new ArrayList<>(stackCount);
         for (int i = 0; i < stackCount; i++) {
-            recipeFinderStacks.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
+            ItemStack stack = ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
+            if (stack.isEmpty()) {
+                throw new IllegalArgumentException("Empty nearby recipe stack");
+            }
+            recipeFinderStacks.add(stack);
         }
 
-        return new NearbyItemsPacket(entries, recipeFinderStacks);
+        boolean truncated = buf.readBoolean();
+        return new NearbyItemsPacket(entries, recipeFinderStacks, truncated);
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
-        int entryCount = Math.min(entries.size(), MAX_ENTRIES);
-        buf.writeVarInt(entryCount);
-        for (NearbyItemEntry entry : entries.subList(0, entryCount)) {
+        buf.writeVarInt(entries.size());
+        for (NearbyItemEntry entry : entries) {
             ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, entry.stack());
-            buf.writeVarInt(entry.count());
+            buf.writeVarLong(entry.count());
         }
 
-        int stackCount = Math.min(recipeFinderStacks.size(), MAX_RECIPE_STACKS);
-        buf.writeVarInt(stackCount);
-        for (ItemStack stack : recipeFinderStacks.subList(0, stackCount)) {
+        buf.writeVarInt(recipeFinderStacks.size());
+        for (ItemStack stack : recipeFinderStacks) {
             ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
         }
+        buf.writeBoolean(truncated);
     }
 
     @Override
