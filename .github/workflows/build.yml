@@ -25,7 +25,7 @@ jobs:
           - id: fabric-api-0.158
             loader: fabric
             gradle_args: -PfabricApiVersion=0.158.0+26.2
-          - id: fabric-api-0.159
+          - id: fabric
             loader: fabric
             gradle_args: -PfabricApiVersion=0.159.0+26.2
           - id: forge
@@ -57,9 +57,19 @@ jobs:
 
   verify:
     name: common-and-packaging
-    needs: loader
+    needs: [wrapper-validation, loader]
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     steps:
+      - name: Require successful protected prerequisite jobs
+        env:
+          WRAPPER_VALIDATION_RESULT: ${{ needs.wrapper-validation.result }}
+          LOADER_RESULT: ${{ needs.loader.result }}
+        run: |
+          if [[ "$WRAPPER_VALIDATION_RESULT" != "success" || "$LOADER_RESULT" != "success" ]]; then
+            echo "Required jobs failed: wrapper-validation=$WRAPPER_VALIDATION_RESULT loader=$LOADER_RESULT"
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
