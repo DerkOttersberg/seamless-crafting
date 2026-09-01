@@ -6,6 +6,19 @@ sourceSets.main {
     resources.srcDir rootProject.file('common/src/main/resources')
 }
 
+sourceSets {
+    gametest {
+        java.srcDirs = ['src/gametest/java', rootProject.file('common/src/gametest/java')]
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    gametestImplementation.extendsFrom implementation
+    gametestRuntimeOnly.extendsFrom runtimeOnly
+}
+
 configurations.forgeRuntimeLibrary {
     exclude group: 'dev.architectury', module: 'architectury-naming-service'
     exclude group: 'dev.architectury', module: 'architectury-mixin-remapper-service'
@@ -15,7 +28,49 @@ dependencies {
     minecraft libs.minecraft
     forge libs.forge
 }
-loom { mods { seamlesscrafting { sourceSet sourceSets.main } } }
+loom {
+    mods {
+        seamlesscrafting {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.gametest
+        }
+    }
+    runs {
+        gameTestServer {
+            runtimeEnvironment = 'gametestserver'
+            forgeTemplate 'gameTestServer'
+            source sourceSets.gametest
+            runDir 'build/gametest'
+            def identityMappings = rootProject.file('gradle/official-named-empty.tiny').absolutePath
+            property 'architectury.naming.mappingsPath', identityMappings
+            property 'architectury.naming.sourceNamespace', 'official'
+            property 'architectury.mixinRemapper.mappingsPath', identityMappings
+            property 'architectury.mixinRemapper.sourceNamespace', 'official'
+            property 'forge.enabledGameTestNamespaces', 'derk_easy_inventory_crafter'
+        }
+    }
+}
+
+tasks.named('runGameTestServer') {
+    doLast {
+        def latestLog = file('build/gametest/logs/latest.log')
+        if (!latestLog.isFile()) {
+            throw new GradleException("Forge GameTest did not create ${latestLog}")
+        }
+        def logText = latestLog.getText('UTF-8')
+        def discoveries = (logText =~ /(\d+) tests are now running/).collect { match -> match[1] as int }
+        def discoveredCount = discoveries.isEmpty() ? 0 : discoveries.max()
+        if (discoveredCount < 12) {
+            throw new GradleException(
+                "Forge discovered ${discoveredCount} GameTests; expected Minecraft's control plus eleven Seamless Crafting scenarios"
+            )
+        }
+        if (!(logText =~ /All \d+ required tests passed/).find()) {
+            throw new GradleException('Forge GameTest log does not contain a successful required-test summary')
+        }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('runGameTestServer') }
 def metadataProperties = [
     mod_version: project.version.toString(),
     loader_version_range: '[65,)',

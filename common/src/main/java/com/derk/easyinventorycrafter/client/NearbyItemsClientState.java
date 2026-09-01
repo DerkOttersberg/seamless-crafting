@@ -33,6 +33,9 @@ public final class NearbyItemsClientState {
     private static int smokeTrailTicks;
     private static double smokeTrailProgress;
     private static int autoRefreshCounter;
+    private static boolean loading;
+    private static boolean receivedPayload;
+    private static boolean truncated;
 
     private NearbyItemsClientState() {
     }
@@ -43,6 +46,18 @@ public final class NearbyItemsClientState {
 
     public static List<ItemStack> getRecipeFinderStacks() {
         return recipeFinderStacks;
+    }
+
+    public static boolean isLoading() {
+        return loading;
+    }
+
+    public static boolean hasReceivedPayload() {
+        return receivedPayload;
+    }
+
+    public static boolean isTruncated() {
+        return truncated;
     }
 
     public static void clear() {
@@ -57,9 +72,13 @@ public final class NearbyItemsClientState {
         smokeTrailStart = Vec3.ZERO;
         smokeTrailTarget = Vec3.ZERO;
         autoRefreshCounter = 0;
+        loading = false;
+        receivedPayload = false;
+        truncated = false;
     }
 
     public static void requestUpdate() {
+        loading = true;
         EasyInventoryCrafterNetwork.sendToServer(new RequestNearbyItemsPacket());
     }
 
@@ -68,6 +87,9 @@ public final class NearbyItemsClientState {
         client.execute(() -> {
             entries = List.copyOf(payload.entries());
             recipeFinderStacks = List.copyOf(payload.recipeFinderStacks());
+            truncated = payload.truncated();
+            receivedPayload = true;
+            loading = false;
             if (client.gui.screen() instanceof RecipeUpdateListener listener) {
                 if (client.gui.screen() instanceof NearbyRecipeBookRefreshAccess access) {
                     access.derk$refreshNearbyRecipeBook();

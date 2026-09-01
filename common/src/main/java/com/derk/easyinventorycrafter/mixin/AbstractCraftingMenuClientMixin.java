@@ -14,7 +14,7 @@ public class AbstractCraftingMenuClientMixin {
     @Inject(method = "fillCraftSlotsStackedContents", at = @At("TAIL"))
     private void derk$addNearbyClientStacks(StackedItemContents contents, CallbackInfo ci) {
         for (ItemStack stack : NearbyItemsClientState.getRecipeFinderStacks()) {
-            contents.accountSimpleStack(stack);
+            contents.accountStack(stack);
         }
     }
 }

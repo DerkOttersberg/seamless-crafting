@@ -1,5 +1,6 @@
 package io.github.derkottersberg.seamlesscrafting.fabric;
 
+import com.derk.easyinventorycrafter.NearbyStorage;
 import com.derk.easyinventorycrafter.net.EasyInventoryCrafterNetwork;
 import com.derk.easyinventorycrafter.net.NearbyHighlightRequestPacket;
 import com.derk.easyinventorycrafter.net.NearbyHighlightResponsePacket;
@@ -12,9 +13,17 @@ import java.nio.file.Path;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage;
+import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
+import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
 
 public final class SeamlessCraftingFabric implements ModInitializer {
     @Override
@@ -49,6 +58,13 @@ public final class SeamlessCraftingFabric implements ModInitializer {
         @Override
         public void sendToPlayer(ServerPlayer player, CustomPacketPayload payload) {
             ServerPlayNetworking.send(player, payload);
+        }
+
+        @Override
+        @Nullable
+        public NearbyStorage findNearbyStorage(Level level, BlockPos pos, BlockState state, @Nullable BlockEntity blockEntity) {
+            Storage<ItemVariant> storage = ItemStorage.SIDED.find(level, pos, state, blockEntity, null);
+            return storage == null ? null : new FabricNearbyStorage(storage, pos);
         }
     }
 }

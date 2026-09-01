@@ -2,12 +2,12 @@ package com.derk.easyinventorycrafter.net;
 
 import com.derk.easyinventorycrafter.NearbyCraftingAccess;
 import com.derk.easyinventorycrafter.NearbyInventoryScanner;
-import com.derk.easyinventorycrafter.NearbyInventoryScanner.NearbyItemEntry;
 import com.derk.easyinventorycrafter.NearbyInventoryScanner.NearbyInventory;
+import com.derk.easyinventorycrafter.NearbyInventoryScanner.NearbyItemsSnapshot;
 import com.derk.easyinventorycrafter.NearbyInventoryScanner.WorldPos;
+import com.derk.easyinventorycrafter.NearbyStorage;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.world.Container;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.ContainerLevelAccess;
@@ -37,11 +37,13 @@ public final class NearbyItemsSync {
             NearbyInventoryScanner.getConfiguredRadius(),
             player
         );
-        List<Container> inventories = scanned.stream().map(NearbyInventory::container).toList();
-        List<NearbyItemEntry> entries = NearbyInventoryScanner.collectItemCounts(inventories);
-        List<ItemStack> recipeFinderStacks = NearbyInventoryScanner.collectRecipeFinderStacks(inventories);
-
-        EasyInventoryCrafterNetwork.sendToPlayer(player, new NearbyItemsPacket(entries, recipeFinderStacks));
+        List<NearbyStorage> inventories = scanned.stream().map(NearbyInventory::storage).toList();
+        NearbyItemsSnapshot snapshot = NearbyInventoryScanner.collectNearbyItems(inventories);
+        EasyInventoryCrafterNetwork.sendToPlayer(player, new NearbyItemsPacket(
+            snapshot.entries(),
+            snapshot.recipeFinderStacks(),
+            snapshot.truncated()
+        ));
     }
 
     @Nullable
@@ -78,7 +80,7 @@ public final class NearbyItemsSync {
             worldPos.pos(),
             NearbyInventoryScanner.getConfiguredRadius(),
             player,
-            stack.getItem()
+            stack
         );
     }
 }

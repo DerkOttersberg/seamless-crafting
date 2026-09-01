@@ -1,9 +1,11 @@
 plugins { id 'dev.architectury.loom-no-remap' }
 base { archivesName = rootProject.archives_base_name }
+def selectedFabricApiVersion = providers.gradleProperty('fabricApiVersion').orElse(libs.versions.fabric.api)
 dependencies {
     minecraft libs.minecraft
     implementation libs.fabric.loader
-    implementation libs.fabric.api
+    implementation "net.fabricmc.fabric-api:fabric-api:${selectedFabricApiVersion.get()}"
+    compileOnly libs.jei.common.api
     implementation project(':common')
 }
 loom { mods { seamless_crafting { sourceSet sourceSets.main; sourceSet project(':common').sourceSets.main } } }
@@ -18,15 +20,44 @@ fabricApi {
     }
 }
 
+sourceSets.gametest.java.srcDir rootProject.file('common/src/gametest/java')
+
 dependencies {
     gametestImplementation project(':common')
 }
 
-def metadataVersion = project.version.toString()
+def metadataProperties = [
+    version: project.version.toString(),
+    fabric_loader_range: ">=${libs.versions.fabric.loader.get()}",
+    fabric_api_range: ">=${libs.versions.fabric.supported.api.minimum.get()} <${libs.versions.fabric.supported.api.maximum.exclusive.get()}",
+    minecraft_range: "~${libs.versions.minecraft.get()}",
+    java_range: ">=${libs.versions.java.get()}"
+]
 processResources {
-    inputs.property 'version', metadataVersion
-    filesMatching('fabric.mod.json') { expand version: metadataVersion }
+    inputs.properties metadataProperties
+    filesMatching('fabric.mod.json') { expand metadataProperties }
 }
+
+tasks.named('runGameTest') {
+    doLast {
+        def latestLog = file('build/run/gameTest/logs/latest.log')
+        if (!latestLog.isFile()) {
+            throw new GradleException("Fabric GameTest did not create ${latestLog}")
+        }
+        def logText = latestLog.getText('UTF-8')
+        def discoveries = (logText =~ /(\d+) tests are now running/).collect { match -> match[1] as int }
+        def discoveredCount = discoveries.isEmpty() ? 0 : discoveries.max()
+        if (discoveredCount < 12) {
+            throw new GradleException(
+                "Fabric discovered ${discoveredCount} GameTests; expected Minecraft's control plus eleven Seamless Crafting scenarios"
+            )
+        }
+        if (!(logText =~ /All \d+ required tests passed/).find()) {
+            throw new GradleException('Fabric GameTest log does not contain a successful required-test summary')
+        }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('runGameTest') }
 tasks.named('jar', Jar) {
     from project(':common').sourceSets.main.output
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE

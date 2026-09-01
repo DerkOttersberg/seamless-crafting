@@ -14,6 +14,13 @@ public record NearbyHighlightResponsePacket(List<BlockPos> positions) implements
     public static final Type<NearbyHighlightResponsePacket> TYPE = new Type<>(SeamlessCraftingMod.networkId("nearby_highlight_response"));
     public static final StreamCodec<RegistryFriendlyByteBuf, NearbyHighlightResponsePacket> STREAM_CODEC = StreamCodec.of((buf, packet) -> packet.write(buf), NearbyHighlightResponsePacket::decode);
 
+    public NearbyHighlightResponsePacket {
+        positions = List.copyOf(positions);
+        if (positions.size() > MAX_POSITIONS) {
+            throw new IllegalArgumentException("Too many nearby highlight positions: " + positions.size());
+        }
+    }
+
     public static NearbyHighlightResponsePacket decode(RegistryFriendlyByteBuf buf) {
         int size = buf.readVarInt();
         if (size < 0 || size > MAX_POSITIONS) {
@@ -27,9 +34,8 @@ public record NearbyHighlightResponsePacket(List<BlockPos> positions) implements
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
-        int size = Math.min(positions.size(), MAX_POSITIONS);
-        buf.writeVarInt(size);
-        for (BlockPos pos : positions.subList(0, size)) {
+        buf.writeVarInt(positions.size());
+        for (BlockPos pos : positions) {
             buf.writeBlockPos(pos);
         }
     }

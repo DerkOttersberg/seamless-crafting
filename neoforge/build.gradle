@@ -6,11 +6,62 @@ sourceSets.main {
     resources.srcDir rootProject.file('common/src/main/resources')
 }
 
+sourceSets {
+    gametest {
+        java.srcDirs = ['src/gametest/java', rootProject.file('common/src/gametest/java')]
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    gametestImplementation.extendsFrom implementation
+    gametestRuntimeOnly.extendsFrom runtimeOnly
+}
+
 dependencies {
     minecraft libs.minecraft
     neoForge libs.neoforge
+    compileOnly libs.jei.common.api
 }
-loom { mods { seamlesscrafting { sourceSet sourceSets.main } } }
+loom {
+    mods {
+        seamlesscrafting {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.gametest
+        }
+    }
+    runs {
+        gameTestServer {
+            runtimeEnvironment = 'gametestserver'
+            forgeTemplate 'gameTestServer'
+            source sourceSets.gametest
+            runDir 'build/gametest'
+            property 'neoforge.enabledGameTestNamespaces', 'derk_easy_inventory_crafter'
+        }
+    }
+}
+
+tasks.named('runGameTestServer') {
+    doLast {
+        def latestLog = file('build/gametest/logs/latest.log')
+        if (!latestLog.isFile()) {
+            throw new GradleException("NeoForge GameTest did not create ${latestLog}")
+        }
+        def logText = latestLog.getText('UTF-8')
+        def discoveries = (logText =~ /(\d+) tests are now running/).collect { match -> match[1] as int }
+        def discoveredCount = discoveries.isEmpty() ? 0 : discoveries.max()
+        if (discoveredCount < 12) {
+            throw new GradleException(
+                "NeoForge discovered ${discoveredCount} GameTests; expected Minecraft's control plus eleven Seamless Crafting scenarios"
+            )
+        }
+        if (!(logText =~ /All \d+ required tests passed/).find()) {
+            throw new GradleException('NeoForge GameTest log does not contain a successful required-test summary')
+        }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('runGameTestServer') }
 def metadataProperties = [
     mod_version: project.version.toString(),
     neo_version_range: '[26.2.0.75,26.3)',

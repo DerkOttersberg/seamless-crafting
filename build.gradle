@@ -16,6 +16,7 @@ allprojects {
         maven { url = 'https://maven.minecraftforge.net/' }
         maven { url = 'https://maven.neoforged.net/releases/' }
         maven { url = 'https://maven.architectury.dev/' }
+        maven { url = 'https://maven.blamejared.com/' }
     }
 }
 
@@ -31,6 +32,13 @@ subprojects {
     tasks.withType(JavaCompile).configureEach {
         options.encoding = 'UTF-8'
         options.release = libs.versions.java.get().toInteger()
+    }
+
+    tasks.withType(Jar).configureEach {
+        from(rootProject.file('LICENSE.txt')) {
+            into 'META-INF'
+            rename { "LICENSE_${rootProject.archives_base_name}.txt" }
+        }
     }
 
     tasks.withType(Test).configureEach { useJUnitPlatform() }
@@ -84,8 +92,22 @@ tasks.register('verifyLoaderJars') {
             forge: [expected: 'META-INF/mods.toml', forbidden: ['fabric.mod.json', 'META-INF/neoforge.mods.toml']],
             neoforge: [expected: 'META-INF/neoforge.mods.toml', forbidden: ['fabric.mod.json', 'META-INF/mods.toml']]
         ]
+        def exactVersion = rootProject.mod_version.toString()
+        def requireEqual = { actual, expected, label ->
+            if (actual != expected) throw new GradleException("${label}: expected '${expected}', got '${actual}'")
+        }
+        def requireFragments = { text, fragments, label ->
+            fragments.each { fragment ->
+                if (!text.contains(fragment)) throw new GradleException("${label} is missing exact metadata fragment: ${fragment}")
+            }
+        }
         specifications.each { loader, specification ->
             def archive = loaderJarFiles[loader].get().asFile
+            requireEqual(
+                archive.name,
+                "${rootProject.archives_base_name}-${exactVersion}-${loader}.jar",
+                "${loader} archive name"
+            )
             new java.util.zip.ZipFile(archive).withCloseable { zip ->
                 if (zip.getEntry(specification.expected) == null) throw new GradleException("${archive.name} is missing ${specification.expected}")
                 specification.forbidden.each { entry ->
@@ -93,6 +115,106 @@ tasks.register('verifyLoaderJars') {
                 }
                 if (zip.getEntry('io/github/derkottersberg/seamlesscrafting/SeamlessCraftingMod.class') == null) throw new GradleException("${archive.name} is missing common code")
                 if (zip.getEntry('seamless_crafting.mixins.json') == null) throw new GradleException("${archive.name} is missing mixin metadata")
+                def licenseEntry = zip.getEntry('META-INF/LICENSE_seamless-crafting.txt')
+                if (licenseEntry == null) throw new GradleException("${archive.name} is missing the CC0 license file")
+                def licenseText = zip.getInputStream(licenseEntry).getText('UTF-8')
+                if (!licenseText.contains('SPDX-License-Identifier: CC0-1.0')
+                    || !licenseText.contains('Creative Commons Legal Code')
+                    || !licenseText.contains('1. Copyright and Related Rights.')
+                    || !licenseText.contains('4. Limitations and Disclaimers.')
+                    || licenseText.length() < 7000
+                    || licenseText.contains('GNU LESSER GENERAL PUBLIC LICENSE')) {
+                    throw new GradleException("${archive.name} does not contain the canonical CC0 license text")
+                }
+
+                def entryNames = []
+                def entries = zip.entries()
+                while (entries.hasMoreElements()) entryNames << entries.nextElement().name
+                def testEntries = entryNames.findAll {
+                    it.contains('/gametest/') || it.endsWith('GameTests.class') || it.endsWith('Scenario.class')
+                }
+                if (!testEntries.isEmpty()) {
+                    throw new GradleException("${archive.name} contains GameTest-only classes: ${testEntries.join(', ')}")
+                }
+                if (entryNames.any { it.startsWith('mezz/jei/') }) {
+                    throw new GradleException("${archive.name} bundled compile-only JEI API classes")
+                }
+
+                def fabricJeiPlugin = 'io/github/derkottersberg/seamlesscrafting/fabric/SeamlessCraftingFabricJeiPlugin.class'
+                def neoJeiPlugin = 'io/github/derkottersberg/seamlesscrafting/neoforge/SeamlessCraftingNeoForgeJeiPlugin.class'
+                requireEqual(entryNames.contains(fabricJeiPlugin), loader == 'fabric', "${archive.name} Fabric JEI plugin presence")
+                requireEqual(entryNames.contains(neoJeiPlugin), loader == 'neoforge', "${archive.name} NeoForge JEI plugin presence")
+
+                def metadataText = zip.getInputStream(zip.getEntry(specification.expected)).getText('UTF-8')
+                if (metadataText.contains('${')) {
+                    throw new GradleException("${archive.name} contains an unexpanded metadata placeholder")
+                }
+                def processedMetadata = file("${loader}/build/resources/main/${specification.expected}")
+                if (!processedMetadata.isFile()) {
+                    throw new GradleException("${loader} processed metadata is missing: ${processedMetadata}")
+                }
+                requireEqual(
+                    metadataText.replace('\r\n', '\n').trim(),
+                    processedMetadata.getText('UTF-8').replace('\r\n', '\n').trim(),
+                    "${loader} processed and packaged metadata"
+                )
+
+                if (loader == 'fabric') {
+                    def metadata = new groovy.json.JsonSlurper().parseText(metadataText)
+                    requireEqual(metadata.schemaVersion, 1, 'Fabric schemaVersion')
+                    requireEqual(metadata.id, 'seamless_crafting', 'Fabric mod id')
+                    requireEqual(metadata.version, exactVersion, 'Fabric version')
+                    requireEqual(metadata.name, 'Seamless Crafting', 'Fabric canonical name')
+                    requireEqual(metadata.license, 'CC0-1.0', 'Fabric license')
+                    def expectedDependencies = [
+                        fabricloader: ">=${libs.versions.fabric.loader.get()}",
+                        'fabric-api': ">=${libs.versions.fabric.supported.api.minimum.get()} <${libs.versions.fabric.supported.api.maximum.exclusive.get()}",
+                        minecraft: "~${libs.versions.minecraft.get()}",
+                        java: ">=${libs.versions.java.get()}"
+                    ]
+                    expectedDependencies.each { id, range ->
+                        requireEqual(metadata.depends[id], range, "Fabric ${id} range")
+                    }
+                    if (metadata.depends.values().any { it == '*' || it.contains('${') }) {
+                        throw new GradleException("${archive.name} contains a wildcard or placeholder dependency range")
+                    }
+                } else if (loader == 'forge') {
+                    requireFragments(metadataText, [
+                        'modLoader="javafml"',
+                        'loaderVersion="[65,)"',
+                        'license="CC0-1.0"',
+                        'modId="derk_easy_inventory_crafter"',
+                        "version=\"${exactVersion}\"",
+                        'displayName="Seamless Crafting"',
+                        'modId="forge"',
+                        'versionRange="[65.1.3,66)"',
+                        'modId="minecraft"',
+                        'versionRange="[26.2,26.3)"',
+                        '[features.derk_easy_inventory_crafter]',
+                        'javaVersion="[25,)"'
+                    ], 'Forge metadata')
+                    if (metadataText.contains('versionRange="*"')) {
+                        throw new GradleException("${archive.name} contains a wildcard dependency range")
+                    }
+                } else {
+                    requireFragments(metadataText, [
+                        'modLoader="javafml"',
+                        'loaderVersion="[1,)"',
+                        'license="CC0-1.0"',
+                        'modId="derk_easy_inventory_crafter"',
+                        "version=\"${exactVersion}\"",
+                        'displayName="Seamless Crafting"',
+                        'modId="neoforge"',
+                        'versionRange="[26.2.0.75,26.3)"',
+                        'modId="minecraft"',
+                        'versionRange="[26.2,26.3)"',
+                        '[features.derk_easy_inventory_crafter]',
+                        'javaVersion="[25,)"'
+                    ], 'NeoForge metadata')
+                    if (metadataText.contains('versionRange="*"')) {
+                        throw new GradleException("${archive.name} contains a wildcard dependency range")
+                    }
+                }
             }
         }
     }

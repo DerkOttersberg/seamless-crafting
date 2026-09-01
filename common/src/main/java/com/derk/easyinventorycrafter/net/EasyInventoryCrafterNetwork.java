@@ -11,7 +11,7 @@ import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.InventoryMenu;
 
 public final class EasyInventoryCrafterNetwork {
-    public static final int PROTOCOL_VERSION = 2;
+    public static final int PROTOCOL_VERSION = 4;
     private static PlatformServices platform;
     private static ClientPlatformServices clientPlatform;
 
@@ -57,7 +57,7 @@ public final class EasyInventoryCrafterNetwork {
         }
 
         List<net.minecraft.core.BlockPos> positions = NearbyItemsSync.findHighlightPositions(player, packet.stack());
-        if (positions != null && !positions.isEmpty()) {
+        if (positions != null) {
             sendToPlayer(player, new NearbyHighlightResponsePacket(positions));
         }
     }
