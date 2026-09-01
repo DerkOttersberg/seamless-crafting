@@ -30,6 +30,8 @@ class NearbyPanelLayoutTest {
 
         assertFalse(layout.expanded());
         assertEquals(20, layout.visibleBounds().getFirst().height());
+        assertEquals(272, layout.panelX());
+        assertEquals(84, layout.visibleBounds().getFirst().width());
     }
 
     @Test
@@ -38,5 +40,18 @@ class NearbyPanelLayoutTest {
 
         assertTrue(layout.expanded());
         assertEquals(2, layout.rows());
+    }
+
+    @Test
+    void exposesOnlyTheActuallyVisibleControlAndPanelRectangles() {
+        NearbyPanelLayout layout = NearbyPanelLayout.calculate(640, 360, 200, 80, 176, true, false, 84);
+
+        assertEquals(3, layout.visibleBounds().size());
+        assertEquals(new PanelBounds(layout.buttonX(), layout.buttonY(), 84, 20), layout.visibleBounds().get(0));
+        assertEquals(new PanelBounds(layout.buttonX(), layout.searchY(), 84, 14), layout.visibleBounds().get(1));
+        assertEquals(
+            new PanelBounds(layout.panelX(), layout.panelY(), NearbyPanelLayout.PANEL_WIDTH, layout.panelHeight()),
+            layout.visibleBounds().get(2)
+        );
     }
 }

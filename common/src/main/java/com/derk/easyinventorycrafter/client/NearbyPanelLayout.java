@@ -32,7 +32,21 @@ public record NearbyPanelLayout(
         int leftX = leftPos - PANEL_WIDTH - MARGIN;
         boolean rightFits = rightX + PANEL_WIDTH <= screenWidth - 4;
         boolean leftFits = !recipeBookOpen && leftX >= 4;
-        int x = rightFits ? rightX : leftFits ? leftX : Mth.clamp(rightX, 4, Math.max(4, screenWidth - PANEL_WIDTH - 4));
+        int collapsedLeftX = leftPos - controlsWidth - MARGIN;
+        boolean collapsedRightFits = rightX + controlsWidth <= screenWidth - 4;
+        boolean collapsedLeftFits = !recipeBookOpen && collapsedLeftX >= 4;
+        int x;
+        if (requestedOpen && rightFits) {
+            x = rightX;
+        } else if (requestedOpen && leftFits) {
+            x = leftX;
+        } else if (collapsedRightFits) {
+            x = rightX;
+        } else if (collapsedLeftFits) {
+            x = collapsedLeftX;
+        } else {
+            x = Mth.clamp(rightX, 4, Math.max(4, screenWidth - controlsWidth - 4));
+        }
         int panelY = topPos + 48;
         int availableRows = (screenHeight - panelY - 4 - PANEL_HEADER_HEIGHT) / SLOT_SIZE;
         int rows = Math.max(0, Math.min(MAX_ROWS, availableRows));
@@ -57,8 +71,13 @@ public record NearbyPanelLayout(
     }
 
     public List<PanelBounds> visibleBounds() {
-        int height = expanded ? panelHeight() + 42 : 20;
-        int width = expanded ? PANEL_WIDTH : controlsWidth;
-        return List.of(new PanelBounds(panelX, buttonY(), width, height));
+        if (!expanded) {
+            return List.of(new PanelBounds(panelX, buttonY(), controlsWidth, 20));
+        }
+        return List.of(
+            new PanelBounds(panelX, buttonY(), controlsWidth, 20),
+            new PanelBounds(panelX, searchY(), Math.min(PANEL_WIDTH, 84), 14),
+            new PanelBounds(panelX, panelY, PANEL_WIDTH, panelHeight())
+        );
     }
 }

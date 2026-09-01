@@ -2,6 +2,7 @@ package com.derk.easyinventorycrafter.gametest;
 
 import com.derk.easyinventorycrafter.NearbyCraftingAccess;
 import com.derk.easyinventorycrafter.EasyInventoryCrafterConfig;
+import com.derk.easyinventorycrafter.NearbyInventoryAccounting;
 import com.derk.easyinventorycrafter.NearbyInventoryScanner;
 import com.derk.easyinventorycrafter.NearbyRecipePlacementTransaction;
 import com.derk.easyinventorycrafter.NearbyStorage;
@@ -11,6 +12,7 @@ import com.derk.easyinventorycrafter.net.NearbyItemsPacket;
 import io.netty.buffer.Unpooled;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -247,6 +249,32 @@ public final class SeamlessCraftingGameTestScenario {
             "Rollback introduced items into the player snapshot"
         );
         helper.assertValueEqual(first.amount + second.amount + countGridItems(player), 4, "Commit failure violated conservation");
+
+        CommitRaceStorage limitedRestore = new CommitRaceStorage(
+            new BlockPos(2, 0, 0),
+            exactPlanks,
+            4,
+            false,
+            2
+        );
+        RecipeBookMenu.PostPlaceAction limitedAction = NearbyRecipePlacementTransaction.tryPlaceWithStoragesForTesting(
+            menuAccess,
+            2,
+            2,
+            player.inventoryMenu.getInputGridSlots(),
+            player.getInventory(),
+            recipe,
+            false,
+            List.of(limitedRestore)
+        );
+        helper.assertValueEqual(
+            limitedAction,
+            RecipeBookMenu.PostPlaceAction.NOTHING,
+            "A non-restorable full extraction did not terminate safely"
+        );
+        helper.assertValueEqual(limitedRestore.committedExtractions, 0, "A non-restorable planned amount was extracted");
+        helper.assertValueEqual(limitedRestore.amount, 4, "Reversible-amount validation mutated storage");
+        helper.assertValueEqual(countGridItems(player), 0, "A rejected non-restorable plan changed the grid");
         helper.succeed();
     }
 
@@ -349,45 +377,10 @@ public final class SeamlessCraftingGameTestScenario {
         Player player = makePlayerNearStorage(helper);
         player.containerMenu = player.inventoryMenu;
         RecipeHolder<?> loaded = craftingTableRecipe(helper);
-        CraftingRecipe delegate = (CraftingRecipe) loaded.value();
-        CraftingRecipe componentSensitive = new CraftingRecipe() {
-            @Override
-            public boolean matches(CraftingInput input, Level level) {
-                return delegate.matches(input, level)
-                    && input.items().stream().filter(stack -> !stack.isEmpty()).allMatch(ItemStack::isEnchanted);
-            }
-
-            @Override
-            public ItemStack assemble(CraftingInput input) {
-                return delegate.assemble(input);
-            }
-
-            @Override
-            public boolean showNotification() {
-                return delegate.showNotification();
-            }
-
-            @Override
-            public String group() {
-                return delegate.group();
-            }
-
-            @Override
-            public RecipeSerializer<? extends CraftingRecipe> getSerializer() {
-                return delegate.getSerializer();
-            }
-
-            @Override
-            public CraftingBookCategory category() {
-                return delegate.category();
-            }
-
-            @Override
-            public PlacementInfo placementInfo() {
-                return delegate.placementInfo();
-            }
-        };
-        RecipeHolder<CraftingRecipe> exactRecipe = new RecipeHolder<>(loaded.id(), componentSensitive);
+        RecipeHolder<CraftingRecipe> exactRecipe = constrainedRecipe(
+            loaded,
+            input -> input.items().stream().filter(stack -> !stack.isEmpty()).allMatch(ItemStack::isEnchanted)
+        );
 
         RecipeBookMenu.PostPlaceAction action = player.inventoryMenu.handlePlacement(
             false, false, exactRecipe, helper.getLevel(), player.getInventory()
@@ -481,6 +474,44 @@ public final class SeamlessCraftingGameTestScenario {
             8,
             "Player-before-storage identity selection violated conservation"
         );
+
+        player.inventoryMenu.getInputGridSlots().forEach(slot -> slot.set(ItemStack.EMPTY));
+        player.getInventory().clearContent();
+        ItemStack oakCandidate = enchantedPlanks(helper, 4);
+        ItemStack birchCandidate = new ItemStack(Items.BIRCH_PLANKS, 4);
+        birchCandidate.enchant(
+            helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
+                .getOrThrow(Enchantments.UNBREAKING),
+            1
+        );
+        priorityBarrel.setItem(0, oakCandidate.copy());
+        priorityBarrel.setItem(1, birchCandidate.copy());
+        RecipeHolder<CraftingRecipe> birchOnlyRecipe = constrainedRecipe(
+            loaded,
+            input -> input.items().stream()
+                .filter(stack -> !stack.isEmpty())
+                .allMatch(stack -> stack.is(Items.BIRCH_PLANKS) && stack.isEnchanted())
+        );
+        RecipeBookMenu.PostPlaceAction alternateItemAction = player.inventoryMenu.handlePlacement(
+            false,
+            false,
+            birchOnlyRecipe,
+            helper.getLevel(),
+            player.getInventory()
+        );
+        helper.assertValueEqual(alternateItemAction, RecipeBookMenu.PostPlaceAction.NOTHING, "Alternate item planning failed");
+        helper.assertValueEqual(priorityBarrel.getItem(0).getCount(), 4, "The rejected oak item candidate was consumed");
+        helper.assertTrue(priorityBarrel.getItem(1).isEmpty(), "The recipe-valid birch item candidate was not consumed");
+        helper.assertTrue(
+            player.inventoryMenu.getInputGridSlots().stream()
+                .map(slot -> slot.getItem())
+                .filter(stack -> !stack.isEmpty())
+                .allMatch(stack -> ItemStack.isSameItemSameComponents(stack, birchCandidate)),
+            "Whole-grid planning did not backtrack across ingredient item choices"
+        );
+        ((NearbyCraftingAccess) player.inventoryMenu).derk$prepareNearbyWithdrawalsForAutofill();
+        helper.assertValueEqual(priorityBarrel.getItem(1).getCount(), 4, "Alternate item rollback did not restore storage");
+        helper.assertValueEqual(countStorageAndGrid(priorityBarrel, player), 8, "Alternate item planning violated conservation");
         helper.succeed();
     }
 
@@ -496,16 +527,14 @@ public final class SeamlessCraftingGameTestScenario {
 
         ItemStack named = plain.copy();
         named.set(DataComponents.CUSTOM_NAME, Component.literal("deterministic"));
-        List<StackIdentity> forwardOrder = new ArrayList<>(List.of(first, StackIdentity.of(plain), StackIdentity.of(named)));
-        List<StackIdentity> reverseOrder = new ArrayList<>(List.of(StackIdentity.of(named), StackIdentity.of(plain), first));
-        forwardOrder.sort(StackIdentity::compareTo);
-        reverseOrder.sort(StackIdentity::compareTo);
-        helper.assertValueEqual(forwardOrder, reverseOrder, "Stack identity ordering depended on discovery order");
-        helper.assertTrue(
-            forwardOrder.get(0).compareTo(forwardOrder.get(1)) != 0
-                && forwardOrder.get(1).compareTo(forwardOrder.get(2)) != 0,
-            "Distinct standard component identities collapsed in deterministic ordering"
-        );
+        List<StackIdentity> encounterOrder = List.of(StackIdentity.of(named), StackIdentity.of(plain), first);
+        List<StackIdentity> accountedOrder = List.copyOf(NearbyInventoryAccounting.totalCounts(List.of(List.of(
+            new NearbyInventoryAccounting.Counted<>(encounterOrder.get(0), 1),
+            new NearbyInventoryAccounting.Counted<>(encounterOrder.get(1), 1),
+            new NearbyInventoryAccounting.Counted<>(encounterOrder.get(2), 1),
+            new NearbyInventoryAccounting.Counted<>(StackIdentity.of(named.copyWithCount(8)), 2)
+        ))).keySet());
+        helper.assertValueEqual(accountedOrder, encounterOrder, "Exact accounting lost stable source encounter order");
         ItemStack firstInsertionOrder = new ItemStack(Items.WOODEN_SWORD);
         firstInsertionOrder.set(DataComponents.CUSTOM_NAME, Component.literal("ordered"));
         firstInsertionOrder.set(DataComponents.DAMAGE, 1);
@@ -515,11 +544,7 @@ public final class SeamlessCraftingGameTestScenario {
         StackIdentity firstOrdered = StackIdentity.of(firstInsertionOrder);
         StackIdentity secondOrdered = StackIdentity.of(secondInsertionOrder);
         helper.assertTrue(firstOrdered.equals(secondOrdered), "Component insertion order changed exact identity");
-        helper.assertValueEqual(
-            firstOrdered.compareTo(secondOrdered),
-            0,
-            "Equal component patches had different deterministic ordering"
-        );
+        helper.assertValueEqual(firstOrdered.hashCode(), secondOrdered.hashCode(), "Equal component patches hashed differently");
 
         long largeCount = (1L << 40) + 123;
         NearbyItemsPacket packet = new NearbyItemsPacket(
@@ -694,6 +719,51 @@ public final class SeamlessCraftingGameTestScenario {
             .orElseThrow(() -> helper.assertionException("The live crafting-table recipe was not loaded"));
     }
 
+    @SuppressWarnings("unchecked")
+    private static RecipeHolder<CraftingRecipe> constrainedRecipe(
+        RecipeHolder<?> loaded,
+        Predicate<CraftingInput> constraint
+    ) {
+        CraftingRecipe delegate = (CraftingRecipe) loaded.value();
+        CraftingRecipe constrained = new CraftingRecipe() {
+            @Override
+            public boolean matches(CraftingInput input, Level level) {
+                return delegate.matches(input, level) && constraint.test(input);
+            }
+
+            @Override
+            public ItemStack assemble(CraftingInput input) {
+                return delegate.assemble(input);
+            }
+
+            @Override
+            public boolean showNotification() {
+                return delegate.showNotification();
+            }
+
+            @Override
+            public String group() {
+                return delegate.group();
+            }
+
+            @Override
+            public RecipeSerializer<? extends CraftingRecipe> getSerializer() {
+                return delegate.getSerializer();
+            }
+
+            @Override
+            public CraftingBookCategory category() {
+                return delegate.category();
+            }
+
+            @Override
+            public PlacementInfo placementInfo() {
+                return delegate.placementInfo();
+            }
+        };
+        return new RecipeHolder<>(loaded.id(), constrained);
+    }
+
     private static void useIsolatedScanRadius() {
         EasyInventoryCrafterConfig.ConfigData config = EasyInventoryCrafterConfig.snapshot();
         if (config.nearbyRadius != 4) {
@@ -743,14 +813,26 @@ public final class SeamlessCraftingGameTestScenario {
         private final BlockPos key;
         private final ItemStack template;
         private final boolean returnPartialOnCommit;
+        private final int maxRestorable;
         private int amount;
         private int committedExtractions;
 
         private CommitRaceStorage(BlockPos key, ItemStack template, int amount, boolean returnPartialOnCommit) {
+            this(key, template, amount, returnPartialOnCommit, Integer.MAX_VALUE);
+        }
+
+        private CommitRaceStorage(
+            BlockPos key,
+            ItemStack template,
+            int amount,
+            boolean returnPartialOnCommit,
+            int maxRestorable
+        ) {
             this.key = key.immutable();
             this.template = template.copyWithCount(1);
             this.amount = amount;
             this.returnPartialOnCommit = returnPartialOnCommit;
+            this.maxRestorable = maxRestorable;
         }
 
         @Override
@@ -778,7 +860,11 @@ public final class SeamlessCraftingGameTestScenario {
 
         @Override
         public boolean canRestoreExactAfterExtraction(int sourceIndex, StackIdentity expected, int requested) {
-            return sourceIndex == 0 && requested > 0 && amount >= requested && expected.matches(template);
+            return sourceIndex == 0
+                && requested > 0
+                && requested <= maxRestorable
+                && amount >= requested
+                && expected.matches(template);
         }
 
         @Override

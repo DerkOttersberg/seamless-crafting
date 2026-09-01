@@ -70,3 +70,9 @@ seamless-crafting-2.1.0+mc26.2-neoforge.jar
 See [PORTING.md](PORTING.md) for version-port boundaries and
 [FEATURE_PARITY_CHECKLIST.md](FEATURE_PARITY_CHECKLIST.md) for current
 verification coverage.
+
+## License
+
+Seamless Crafting is released under `CC0-1.0`. The complete official CC0 1.0
+Universal legal code is included in [LICENSE.txt](LICENSE.txt) and in every
+packaged loader jar.

@@ -165,8 +165,13 @@ public final class NearbyInventoryScanner {
             logicalInventories.add(contents);
         }
 
-        List<Map.Entry<StackIdentity, Long>> totals = NearbyInventoryAccounting.totalCounts(logicalInventories)
-            .entrySet().stream().sorted(Map.Entry.comparingByKey()).toList();
+        // Keep stable physical storage/slot encounter order. Stack component
+        // values are arbitrary mod-defined objects and do not have a general
+        // total ordering; exact identity belongs in equals/hashCode, not a
+        // lossy toString-based comparator.
+        List<Map.Entry<StackIdentity, Long>> totals = List.copyOf(
+            NearbyInventoryAccounting.totalCounts(logicalInventories).entrySet()
+        );
         boolean truncated = totals.size() > MAX_ENTRIES;
         List<NearbyItemEntry> entries = new ArrayList<>();
         for (int index = 0; index < Math.min(totals.size(), MAX_ENTRIES); index++) {

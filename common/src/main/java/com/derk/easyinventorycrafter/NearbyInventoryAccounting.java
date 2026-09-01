@@ -1,5 +1,6 @@
 package com.derk.easyinventorycrafter;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -17,7 +18,10 @@ public final class NearbyInventoryAccounting {
                 }
             }
         }
-        return Map.copyOf(totals);
+        // Map.copyOf deliberately does not preserve encounter order. Source
+        // order is the deterministic tie-breaker for otherwise identical UI
+        // labels, so retain the stable inventory/slot traversal order.
+        return Collections.unmodifiableMap(new LinkedHashMap<>(totals));
     }
 
     private static long saturatedAdd(long left, long right) {

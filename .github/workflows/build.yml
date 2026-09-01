@@ -52,6 +52,7 @@ jobs:
             **/build/test-results/**
             **/build/run/gameTest/logs/**
             **/build/gametest/logs/**
+            **/build/**/crash-reports/**
           if-no-files-found: ignore
 
   verify:
@@ -76,4 +77,5 @@ jobs:
             **/build/test-results/**
             **/build/run/gameTest/logs/**
             **/build/gametest/logs/**
+            **/build/**/crash-reports/**
           if-no-files-found: ignore

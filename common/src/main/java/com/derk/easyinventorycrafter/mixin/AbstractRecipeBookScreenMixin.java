@@ -46,4 +46,9 @@ public class AbstractRecipeBookScreenMixin implements NearbyRecipeBookRefreshAcc
             ((NearbyRecipeBookComponentAccess) recipeBookComponent).derk$refreshStackedContents();
         }
     }
+
+    @Override
+    public boolean derk$isRecipeBookVisible() {
+        return recipeBookComponent.isVisible();
+    }
 }

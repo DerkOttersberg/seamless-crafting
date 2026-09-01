@@ -4,6 +4,7 @@ import com.derk.easyinventorycrafter.NearbyStorage;
 import com.derk.easyinventorycrafter.StackIdentity;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
@@ -42,7 +43,7 @@ final class FabricNearbyStorage implements NearbyStorage {
 
     @Override
     public List<SlotSnapshot> snapshot() {
-        Map<StackIdentity, Long> totals = new HashMap<>();
+        Map<StackIdentity, Long> totals = new LinkedHashMap<>();
         for (StorageView<ItemVariant> view : storage.nonEmptyViews()) {
             if (!view.isResourceBlank() && view.getAmount() > 0) {
                 StackIdentity identity = StackIdentity.of(view.getResource().toStack());
@@ -51,7 +52,6 @@ final class FabricNearbyStorage implements NearbyStorage {
         }
 
         List<StackIdentity> identities = new ArrayList<>(totals.keySet());
-        identities.sort(StackIdentity::compareTo);
         List<SlotSnapshot> result = new ArrayList<>(identities.size());
         for (StackIdentity identity : identities) {
             int sourceIndex = identityToSourceIndex.computeIfAbsent(identity, ignored -> {

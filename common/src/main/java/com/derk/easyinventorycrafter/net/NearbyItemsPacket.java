@@ -31,8 +31,8 @@ public record NearbyItemsPacket(
             throw new IllegalArgumentException("Too many nearby recipe stacks: " + recipeFinderStacks.size());
         }
         for (NearbyItemEntry entry : entries) {
-            if (entry.count() > MAX_REPORTED_COUNT) {
-                throw new IllegalArgumentException("Nearby item count exceeds the wire bound");
+            if (entry.stack().isEmpty() || entry.count() <= 0 || entry.count() > MAX_REPORTED_COUNT) {
+                throw new IllegalArgumentException("Invalid nearby item entry");
             }
         }
         if (recipeFinderStacks.stream().anyMatch(ItemStack::isEmpty)) {

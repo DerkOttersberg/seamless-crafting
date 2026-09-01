@@ -6,6 +6,7 @@ import com.derk.easyinventorycrafter.client.NearbyItemsClientState;
 import com.derk.easyinventorycrafter.client.NearbyPanelAccess;
 import com.derk.easyinventorycrafter.client.NearbyPanelController;
 import com.derk.easyinventorycrafter.client.NearbyPanelLayout;
+import com.derk.easyinventorycrafter.client.NearbyRecipeBookRefreshAccess;
 import com.derk.easyinventorycrafter.client.PanelBounds;
 import java.util.List;
 import java.util.Optional;
@@ -15,16 +16,13 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.gui.screens.recipebook.CraftingRecipeBookComponent;
-import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.InventoryMenu;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -32,10 +30,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(InventoryScreen.class)
 public abstract class InventoryScreenMixin extends AbstractRecipeBookScreen<InventoryMenu> implements NearbyPanelAccess {
-    @Shadow
-    @Final
-    private RecipeBookComponent<?> recipeBookComponent;
-
     @Unique
     private final NearbyPanelController derk$nearbyPanel = new NearbyPanelController();
     @Unique
@@ -80,7 +74,7 @@ public abstract class InventoryScreenMixin extends AbstractRecipeBookScreen<Inve
             this.leftPos,
             this.topPos,
             this.imageWidth,
-            recipeBookComponent.isVisible(),
+            ((NearbyRecipeBookRefreshAccess) (Object) this).derk$isRecipeBookVisible(),
             60
         );
     }

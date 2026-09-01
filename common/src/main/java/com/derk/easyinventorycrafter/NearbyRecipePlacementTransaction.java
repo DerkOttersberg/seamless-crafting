@@ -18,6 +18,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import org.jetbrains.annotations.Nullable;
@@ -159,7 +160,6 @@ public final class NearbyRecipePlacementTransaction {
                 inputGridSlots,
                 playerSnapshot,
                 sources,
-                chosenItems,
                 amount,
                 inventory
             );
@@ -216,11 +216,11 @@ public final class NearbyRecipePlacementTransaction {
         List<Slot> inputGridSlots,
         List<ItemStack> playerSnapshot,
         List<Source> originalSources,
-        List<Holder<Item>> chosenItems,
         int amount,
         Inventory inventory
     ) {
         Recipe<?> recipe = recipeHolder.value();
+        List<Ingredient> ingredients = recipe.placementInfo().ingredients();
         List<Source> sources = originalSources.stream().map(Source::copyForPlan).toList();
         List<Target> targets = new ArrayList<>();
         PlaceRecipeHelper.placeRecipe(
@@ -229,9 +229,9 @@ public final class NearbyRecipePlacementTransaction {
             recipe,
             recipe.placementInfo().slotsToIngredientIndex(),
             (ingredientIndex, slotIndex, x, y) -> {
-                if (ingredientIndex != null && ingredientIndex >= 0 && ingredientIndex < chosenItems.size()
+                if (ingredientIndex != null && ingredientIndex >= 0 && ingredientIndex < ingredients.size()
                     && slotIndex >= 0 && slotIndex < inputGridSlots.size()) {
-                    targets.add(new Target(slotIndex, chosenItems.get(ingredientIndex), amount));
+                    targets.add(new Target(slotIndex, ingredients.get(ingredientIndex), amount));
                 }
             }
         );
@@ -329,7 +329,7 @@ public final class NearbyRecipePlacementTransaction {
         StackIdentity existingIdentity = existing.isEmpty() ? null : StackIdentity.of(existing);
         Set<StackIdentity> candidates = new LinkedHashSet<>();
         for (Source source : sources) {
-            if (source.remaining > 0 && source.identity.stack().is(target.item)) {
+            if (source.remaining > 0 && target.ingredient.test(source.identity.stack())) {
                 candidates.add(source.identity);
             }
         }
@@ -341,8 +341,7 @@ public final class NearbyRecipePlacementTransaction {
                 .comparing((IdentityCandidate candidate) -> !candidate.identity.equals(existingIdentity))
                 .thenComparing(candidate -> !candidate.identity.stack().getComponentsPatch().isEmpty())
                 .thenComparingInt(candidate -> candidate.sourcePriority)
-                .thenComparingInt(candidate -> candidate.sourceOrder)
-                .thenComparing(candidate -> candidate.identity))
+                .thenComparingInt(candidate -> candidate.sourceOrder))
             .map(candidate -> candidate.identity)
             .toList();
     }
@@ -531,6 +530,15 @@ public final class NearbyRecipePlacementTransaction {
                 if (current == null || !source.identity.matches(current.stack()) || current.amount() < source.originalAmount) {
                     return false;
                 }
+                int used = (int) (source.originalAmount - source.remaining);
+                if (used > 0) {
+                    ItemStack simulated = source.storage.simulateExtractExact(source.index, source.identity, used);
+                    if (simulated.getCount() != used
+                        || !source.identity.matches(simulated)
+                        || !source.storage.canRestoreExactAfterExtraction(source.index, source.identity, used)) {
+                        return false;
+                    }
+                }
             }
         }
         return true;
@@ -692,14 +700,14 @@ public final class NearbyRecipePlacementTransaction {
 
     private static final class Target {
         private final int slotIndex;
-        private final Holder<Item> item;
+        private final Ingredient ingredient;
         private final int amount;
         private final List<Allocation> allocations = new ArrayList<>();
         private StackIdentity identity;
 
-        private Target(int slotIndex, Holder<Item> item, int amount) {
+        private Target(int slotIndex, Ingredient ingredient, int amount) {
             this.slotIndex = slotIndex;
-            this.item = item;
+            this.ingredient = ingredient;
             this.amount = amount;
         }
 
