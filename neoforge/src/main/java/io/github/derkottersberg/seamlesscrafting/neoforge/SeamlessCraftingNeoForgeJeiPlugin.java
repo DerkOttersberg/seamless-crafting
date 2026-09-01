@@ -37,7 +37,7 @@ public final class SeamlessCraftingNeoForgeJeiPlugin implements IModPlugin {
             if (!(screen instanceof NearbyPanelAccess access)) {
                 return List.of();
             }
-            return access.derk$getVisiblePanelBounds().stream()
+            return access.derk$getOverlayExclusionBounds().stream()
                 .map(bounds -> new Rect2i(bounds.x(), bounds.y(), bounds.width(), bounds.height()))
                 .toList();
         }

@@ -9,6 +9,8 @@ import net.minecraft.client.input.MouseButtonEvent;
 public interface NearbyPanelAccess {
     List<PanelBounds> derk$getVisiblePanelBounds();
 
+    List<PanelBounds> derk$getOverlayExclusionBounds();
+
     Optional<HoveredNearbyStack> derk$getNearbyStackAt(double mouseX, double mouseY);
 
     boolean derk$handleScroll(double mouseX, double mouseY, double verticalAmount);

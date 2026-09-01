@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class NearbyPanelLayoutTest {
@@ -53,5 +54,31 @@ class NearbyPanelLayoutTest {
             new PanelBounds(layout.panelX(), layout.panelY(), NearbyPanelLayout.PANEL_WIDTH, layout.panelHeight()),
             layout.visibleBounds().get(2)
         );
+    }
+
+    @Test
+    void reservesProspectivePanelColumnForOverlaysWhileCollapsed() {
+        NearbyPanelLayout layout = NearbyPanelLayout.calculate(640, 360, 200, 80, 176, false, false, 84);
+
+        assertFalse(layout.expanded());
+        assertEquals(List.of(new PanelBounds(layout.buttonX(), layout.buttonY(), 84, 20)), layout.visibleBounds());
+        assertEquals(
+            List.of(new PanelBounds(
+                layout.buttonX(),
+                layout.buttonY(),
+                NearbyPanelLayout.PANEL_WIDTH,
+                layout.panelHeight() + 42
+            )),
+            layout.overlayExclusionBounds()
+        );
+    }
+
+    @Test
+    void collapsedButtonUsesSameSideAsItsProspectiveExpandedPanel() {
+        NearbyPanelLayout collapsed = NearbyPanelLayout.calculate(400, 300, 200, 60, 176, false, false, 84);
+        NearbyPanelLayout expanded = NearbyPanelLayout.calculate(400, 300, 200, 60, 176, true, false, 84);
+
+        assertEquals(104, collapsed.panelX());
+        assertEquals(expanded.panelX(), collapsed.panelX());
     }
 }

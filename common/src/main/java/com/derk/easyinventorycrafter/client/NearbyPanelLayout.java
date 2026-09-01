@@ -9,7 +9,8 @@ public record NearbyPanelLayout(
     int panelY,
     int rows,
     boolean expanded,
-    int controlsWidth
+    int controlsWidth,
+    int overlayExclusionWidth
 ) {
     public static final int MARGIN = 6;
     public static final int COLUMNS = 4;
@@ -36,9 +37,9 @@ public record NearbyPanelLayout(
         boolean collapsedRightFits = rightX + controlsWidth <= screenWidth - 4;
         boolean collapsedLeftFits = !recipeBookOpen && collapsedLeftX >= 4;
         int x;
-        if (requestedOpen && rightFits) {
+        if (rightFits) {
             x = rightX;
-        } else if (requestedOpen && leftFits) {
+        } else if (leftFits) {
             x = leftX;
         } else if (collapsedRightFits) {
             x = rightX;
@@ -51,7 +52,8 @@ public record NearbyPanelLayout(
         int availableRows = (screenHeight - panelY - 4 - PANEL_HEADER_HEIGHT) / SLOT_SIZE;
         int rows = Math.max(0, Math.min(MAX_ROWS, availableRows));
         boolean expanded = requestedOpen && rows > 0 && (rightFits || leftFits);
-        return new NearbyPanelLayout(x, panelY, rows, expanded, controlsWidth);
+        int overlayExclusionWidth = rightFits || leftFits ? PANEL_WIDTH : controlsWidth;
+        return new NearbyPanelLayout(x, panelY, rows, expanded, controlsWidth, overlayExclusionWidth);
     }
 
     public int buttonX() {
@@ -79,5 +81,22 @@ public record NearbyPanelLayout(
             new PanelBounds(panelX, searchY(), Math.min(PANEL_WIDTH, 84), 14),
             new PanelBounds(panelX, panelY, PANEL_WIDTH, panelHeight())
         );
+    }
+
+    /**
+     * A stable, contiguous exclusion envelope for recipe viewers.
+     *
+     * <p>JEI lays out a rectangular ingredient grid and may not reliably preserve isolated slots around a
+     * short-lived, button-sized exclusion as the panel is toggled. Reserving the prospective panel column keeps
+     * both the collapsed button and the expanded panel overlay-safe without claiming that the whole envelope is
+     * visibly rendered; {@link #visibleBounds()} remains the exact visible-rectangle contract.</p>
+     */
+    public List<PanelBounds> overlayExclusionBounds() {
+        return List.of(new PanelBounds(
+            panelX,
+            buttonY(),
+            overlayExclusionWidth,
+            panelHeight() + (panelY - buttonY())
+        ));
     }
 }

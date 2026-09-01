@@ -86,6 +86,12 @@ public abstract class InventoryScreenMixin extends AbstractRecipeBookScreen<Inve
     }
 
     @Override
+    public List<PanelBounds> derk$getOverlayExclusionBounds() {
+        derk$updateLayout();
+        return derk$nearbyPanel.overlayExclusionBounds();
+    }
+
+    @Override
     public Optional<HoveredNearbyStack> derk$getNearbyStackAt(double mouseX, double mouseY) {
         derk$updateLayout();
         return derk$nearbyPanel.hoveredStack(mouseX, mouseY);

@@ -24,7 +24,7 @@ import net.minecraft.world.item.ItemStack;
 
 /** Shared panel state, filtering, rendering, hit-testing, and scrolling. */
 public final class NearbyPanelController {
-    private NearbyPanelLayout layout = new NearbyPanelLayout(4, 48, 0, false, 60);
+    private NearbyPanelLayout layout = new NearbyPanelLayout(4, 48, 0, false, 60, 60);
     private EditBox searchField;
     private int scrollOffset;
     private boolean requestedOpen;
@@ -83,22 +83,33 @@ public final class NearbyPanelController {
             panelY + layout.panelHeight(),
             withOpacity(0x88000000)
         );
-        Component header = NearbyItemsClientState.isTruncated()
-            ? Component.literal("Nearby (partial)")
-            : Component.literal("Nearby");
-        graphics.text(font, header, panelX + 4, panelY + 4, NearbyItemsClientState.isTruncated() ? 0xFFD166 : 0xFFFFFF, true);
+        boolean truncated = NearbyItemsClientState.isTruncated();
+        Component header = Component.literal(NearbyPanelPresentation.header(truncated));
+        graphics.text(
+            font,
+            header,
+            panelX + 4,
+            panelY + 4,
+            truncated ? NearbyPanelPresentation.PARTIAL_HEADER_COLOR : NearbyPanelPresentation.HEADER_COLOR,
+            true
+        );
 
         List<NearbyItemEntry> entries = filteredEntries();
-        if (entries.isEmpty()) {
-            Component state;
-            if (NearbyItemsClientState.isLoading() || !NearbyItemsClientState.hasReceivedPayload()) {
-                state = Component.literal("Loading...");
-            } else if (NearbyItemsClientState.getEntries().isEmpty()) {
-                state = Component.literal("No nearby items");
-            } else {
-                state = Component.literal("No matches");
-            }
-            graphics.text(font, state, panelX + 5, panelY + 20, 0xB8B8B8, false);
+        NearbyPanelPresentation.Status status = NearbyPanelPresentation.status(
+            NearbyItemsClientState.isLoading(),
+            NearbyItemsClientState.hasReceivedPayload(),
+            NearbyItemsClientState.getEntries().size(),
+            entries.size()
+        );
+        if (status != NearbyPanelPresentation.Status.CONTENT) {
+            graphics.text(
+                font,
+                Component.literal(status.label()),
+                panelX + 5,
+                panelY + 20,
+                NearbyPanelPresentation.STATUS_COLOR,
+                false
+            );
             return;
         }
 
@@ -179,6 +190,10 @@ public final class NearbyPanelController {
 
     public List<PanelBounds> visibleBounds() {
         return layout.visibleBounds();
+    }
+
+    public List<PanelBounds> overlayExclusionBounds() {
+        return layout.overlayExclusionBounds();
     }
 
     public Optional<HoveredNearbyStack> hoveredStack(double mouseX, double mouseY) {
