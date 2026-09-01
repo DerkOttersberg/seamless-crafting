@@ -63,9 +63,9 @@ tasks.named('runGameTestServer') {
         def logText = latestLog.getText('UTF-8')
         def discoveries = (logText =~ /(\d+) tests are now running/).collect { match -> match[1] as int }
         def discoveredCount = discoveries.isEmpty() ? 0 : discoveries.max()
-        if (discoveredCount < 12) {
+        if (discoveredCount < 13) {
             throw new GradleException(
-                "Forge discovered ${discoveredCount} GameTests; expected Minecraft's control plus eleven Seamless Crafting scenarios"
+                "Forge discovered ${discoveredCount} GameTests; expected Minecraft's control plus twelve Seamless Crafting scenarios"
             )
         }
         if (!(logText =~ /All \d+ required tests passed/).find()) {

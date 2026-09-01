@@ -8,8 +8,8 @@
   backtracking, source revalidation, atomic commit, and conservation-safe
   rollback for nearby and player-held enchanted inputs.
 - Added each loader's standard item-storage adapter for modded containers,
-  including exact-component extraction, fallback-slot restoration, conservative
-  handler admission, and physical-storage view deduplication.
+  including exact-component extraction, fallback-slot restoration, exact
+  simulated rollback admission, and physical-storage view deduplication.
 - Bounded nearby packet entries and VarLong counts, disclosed truncated results
   to the client, rejected oversized codecs, and upgraded the network protocol.
 - Replaced duplicated inventory/crafting panel logic with one adaptive controller

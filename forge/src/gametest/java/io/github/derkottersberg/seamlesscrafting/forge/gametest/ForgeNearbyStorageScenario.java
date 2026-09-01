@@ -37,11 +37,12 @@ public final class ForgeNearbyStorageScenario {
         BlockPos capabilityPos = new BlockPos(1, 1, 1);
         helper.setBlock(capabilityPos, Blocks.TEST_BLOCK.defaultBlockState());
         BlockPos absoluteCapabilityPos = helper.absolutePos(capabilityPos);
+        ItemStackHandler handler = new ItemStackHandler(2);
         CapabilityOnlyBlockEntity capabilityOnly = new CapabilityOnlyBlockEntity(
             absoluteCapabilityPos,
-            helper.getLevel().getBlockState(absoluteCapabilityPos)
+            helper.getLevel().getBlockState(absoluteCapabilityPos),
+            handler
         );
-        ItemStackHandler handler = capabilityOnly.items;
         handler.setStackInSlot(0, enchanted.copy());
         helper.getLevel().setBlockEntity(capabilityOnly);
         Player player = helper.makeMockServerPlayerInLevel();
@@ -78,19 +79,57 @@ public final class ForgeNearbyStorageScenario {
             "Forge capability-only scan lost or duplicated items"
         );
         helper.assertValueEqual(
-            capabilityOnly.items.getStackInSlot(0).getCount(),
+            handler.getStackInSlot(0).getCount(),
             4,
             "Forge capability discovery mutated storage"
         );
         helper.succeed();
     }
 
-    private static final class CapabilityOnlyBlockEntity extends BlockEntity {
-        private final ItemStackHandler items = new ItemStackHandler(2);
-        private final LazyOptional<IItemHandler> itemCapability = LazyOptional.of(() -> items);
+    public static void rejectsUnsafeStorageHandlers(GameTestHelper helper) {
+        OutputOnlyHandler outputOnly = new OutputOnlyHandler();
+        StatefulSimulationHandler stateful = new StatefulSimulationHandler();
+        AmbiguousRemainderHandler ambiguous = new AmbiguousRemainderHandler();
+        outputOnly.setStackInSlot(0, new ItemStack(Items.OAK_PLANKS, 4));
+        stateful.setStackInSlot(0, new ItemStack(Items.OAK_PLANKS, 4));
+        ambiguous.setStackInSlot(0, new ItemStack(Items.OAK_PLANKS, 4));
 
-        private CapabilityOnlyBlockEntity(BlockPos pos, BlockState state) {
+        installCapability(helper, new BlockPos(1, 1, 1), outputOnly);
+        installCapability(helper, new BlockPos(2, 1, 1), stateful);
+        installCapability(helper, new BlockPos(3, 1, 1), ambiguous);
+
+        Player player = helper.makeMockServerPlayerInLevel();
+        player.getInventory().clearContent();
+        BlockPos playerPos = helper.absolutePos(new BlockPos(2, 1, 3));
+        player.setPos(playerPos.getX() + 0.5D, playerPos.getY(), playerPos.getZ() + 0.5D);
+
+        var discovered = NearbyInventoryScanner.scan(helper.getLevel(), player.blockPosition(), 4, player);
+        helper.assertTrue(discovered.isEmpty(), "Forge admitted an output-only, stateful, or ambiguous item handler");
+        helper.assertTrue(outputOnly.simulatedInsertCalls > 0, "Forge did not probe rollback insertion on an output-only handler");
+        helper.assertTrue(stateful.simulatedInsertCalls >= 3, "Forge did not compare repeated rollback insertion plans");
+        helper.assertTrue(ambiguous.simulatedInsertCalls > 0, "Forge did not validate the simulated insertion remainder");
+        helper.assertValueEqual(outputOnly.getStackInSlot(0).getCount(), 4, "Output-only admission changed live contents");
+        helper.assertValueEqual(stateful.getStackInSlot(0).getCount(), 4, "Stateful admission changed live contents");
+        helper.assertValueEqual(ambiguous.getStackInSlot(0).getCount(), 4, "Ambiguous admission changed live contents");
+        helper.succeed();
+    }
+
+    private static void installCapability(GameTestHelper helper, BlockPos relativePos, IItemHandler handler) {
+        helper.setBlock(relativePos, Blocks.TEST_BLOCK.defaultBlockState());
+        BlockPos absolutePos = helper.absolutePos(relativePos);
+        helper.getLevel().setBlockEntity(new CapabilityOnlyBlockEntity(
+            absolutePos,
+            helper.getLevel().getBlockState(absolutePos),
+            handler
+        ));
+    }
+
+    private static final class CapabilityOnlyBlockEntity extends BlockEntity {
+        private final LazyOptional<IItemHandler> itemCapability;
+
+        private CapabilityOnlyBlockEntity(BlockPos pos, BlockState state, IItemHandler handler) {
             super(BlockEntityTypes.TEST_BLOCK, pos, state);
+            itemCapability = LazyOptional.of(() -> handler);
         }
 
         @Override
@@ -99,6 +138,59 @@ public final class ForgeNearbyStorageScenario {
                 return itemCapability.cast();
             }
             return super.getCapability(capability, side);
+        }
+    }
+
+    private static final class OutputOnlyHandler extends ItemStackHandler {
+        private int simulatedInsertCalls;
+
+        private OutputOnlyHandler() {
+            super(1);
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            if (simulate) {
+                simulatedInsertCalls++;
+            }
+            return stack;
+        }
+    }
+
+    private static final class StatefulSimulationHandler extends ItemStackHandler {
+        private int simulatedInsertCalls;
+
+        private StatefulSimulationHandler() {
+            super(2);
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            if (!simulate) {
+                return super.insertItem(slot, stack, false);
+            }
+            simulatedInsertCalls++;
+            if (simulatedInsertCalls == 1 || slot == 1) {
+                return ItemStack.EMPTY;
+            }
+            return stack.copyWithCount(Math.max(1, stack.getCount() - 1));
+        }
+    }
+
+    private static final class AmbiguousRemainderHandler extends ItemStackHandler {
+        private int simulatedInsertCalls;
+
+        private AmbiguousRemainderHandler() {
+            super(1);
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            if (!simulate) {
+                return super.insertItem(slot, stack, false);
+            }
+            simulatedInsertCalls++;
+            return new ItemStack(Items.STONE, Math.max(1, stack.getCount() - 1));
         }
     }
 }

@@ -79,6 +79,11 @@ public final class SeamlessCraftingForgeGameTests {
             "verifies_standard_storage_adapter",
             () -> ForgeNearbyStorageScenario::verifiesStandardStorageAdapter
         );
+        register(
+            event,
+            "rejects_unsafe_storage_handlers",
+            () -> ForgeNearbyStorageScenario::rejectsUnsafeStorageHandlers
+        );
     }
 
     private static void register(
