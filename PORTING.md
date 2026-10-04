@@ -1,5 +1,15 @@
 # Porting Seamless Crafting
 
+## Optional JEI in multiplayer
+
+JEI is not required by this mod. Native acceptance also runs without JEI.
+The tested optional JEI 15.62.0.219 needs MezzConfig. With Forge 47.4.26,
+MezzConfig 0.6.8 rejects a peer without its channel because its published
+`ABSENT` predicate compares Forge's `ChannelData` object to a protocol string.
+Use matching MezzConfig on clients and server for that combination; do not
+disable Forge handshake validation. This third-party requirement is not a
+SeamlessLib or Crafting runtime dependency. Fabric has a separate integration.
+
 Minecraft and tool versions live only in `gradle/libs.versions.toml`. A normal
 Minecraft port starts by updating that catalog and compiling `common` against
 official Minecraft names before changing loader adapters.
