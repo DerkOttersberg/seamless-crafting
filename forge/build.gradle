@@ -76,9 +76,9 @@ tasks.named('runGameTestServer') {
 tasks.named('check') { dependsOn tasks.named('runGameTestServer') }
 def metadataProperties = [
     mod_version: project.version.toString(),
-    loader_version_range: '[65,)',
-    forge_version_range: '[65.1.3,66)',
-    minecraft_version_range: '[26.2,26.3)'
+    loader_version_range: '[66,)',
+    forge_version_range: '[66.0.9,67)',
+    minecraft_version_range: '[26.3,26.4)'
 ]
 processResources {
     inputs.properties metadataProperties

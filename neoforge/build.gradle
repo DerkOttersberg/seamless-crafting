@@ -64,8 +64,8 @@ tasks.named('runGameTestServer') {
 tasks.named('check') { dependsOn tasks.named('runGameTestServer') }
 def metadataProperties = [
     mod_version: project.version.toString(),
-    neo_version_range: '[26.2.0.75,26.3)',
-    minecraft_version_range: '[26.2,26.3)'
+    neo_version_range: '[26.3.0.48-beta,26.4)',
+    minecraft_version_range: '[26.3,26.4)'
 ]
 processResources {
     inputs.properties metadataProperties

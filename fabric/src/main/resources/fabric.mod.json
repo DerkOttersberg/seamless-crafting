@@ -37,7 +37,7 @@
     "java": "${java_range}"
   },
   "suggests": {
-    "modmenu": ">=20.0.3"
+    "modmenu": ">=21.0.0"
   },
   "icon": "assets/seamless_crafting/icon.png"
 }

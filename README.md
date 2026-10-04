@@ -1,11 +1,15 @@
 # Seamless Crafting
 
+This is the `26.3` source branch. For Minecraft 26.2, use the `26.2` branch;
+all three modloaders are included in each version branch. Forge/NeoForge's
+pinned 26.3 loaders are upstream beta builds. See [REPOSITORY_WORKFLOW.md](REPOSITORY_WORKFLOW.md).
+
 Seamless Crafting lets the crafting table and player inventory use items from
 nearby containers. Its recipe-book integration remains server-authoritative,
 returns withdrawn items when crafting is cancelled, and can locate/highlight
 the container holding an ingredient.
 
-Version `2.1.0+mc26.2` supports Minecraft Java 26.2 on Fabric, Forge, and
+Version `2.1.1+mc26.3` supports Minecraft Java 26.3 on Fabric, Forge, and
 NeoForge with Java 25.
 
 ## Compatibility
@@ -14,8 +18,8 @@ NeoForge with Java 25.
 - Forge and NeoForge retain `derk_easy_inventory_crafter` so existing
   installations are not silently treated as a different mod.
 - Packet identifiers retain the established Forge/NeoForge namespace.
-- Fabric metadata supports Fabric API `>=0.158.0 <0.160.0`; the default build
-  uses `0.159.0+26.2` and CI also exercises `0.158.0+26.2`.
+- Fabric metadata supports Fabric API `>=0.161.0 <0.162.0`; the build and CI
+  use `0.161.0+26.3`.
 - Legacy “Bluethooth Chest” configuration names are migrated; see
   [MIGRATION.md](MIGRATION.md).
 
@@ -38,9 +42,9 @@ preserved during display, recipe placement, cancellation, and menu close.
 
 The nearby panel adapts to the free side of the crafting UI and collapses when
 neither side fits, so recipe viewers can use their normal overlay regions. JEI
-26.2 integration is optional on Fabric and NeoForge. Forge continues to work
-without a recipe-viewer API because JEI does not publish a Forge 26.2 artifact;
-EMI is intentionally unlinked because it does not publish a 26.2 artifact.
+26.3 integration is optional on Fabric and NeoForge. Forge continues to work
+without a recipe-viewer API because JEI does not publish a Forge 26.3 artifact;
+EMI is intentionally unlinked because it does not publish a 26.3 artifact.
 
 ## Build
 
@@ -50,10 +54,10 @@ Use Java 25 and run:
 gradlew.bat clean check build
 ```
 
-To reproduce the lower-bound Fabric API lane, run:
+To build the pinned Fabric API lane, run:
 
 ```text
-gradlew.bat :common:check :fabric:build -PfabricApiVersion=0.158.0+26.2
+gradlew.bat :common:check :fabric:build -PfabricApiVersion=0.161.0+26.3
 ```
 
 `check` runs unit tests, all three loader GameTest servers, test-discovery
@@ -62,9 +66,9 @@ guards, common-source isolation, and exact processed/packaged metadata checks.
 Loader jars are written to each loader module's `build/libs` directory as:
 
 ```text
-seamless-crafting-2.1.0+mc26.2-fabric.jar
-seamless-crafting-2.1.0+mc26.2-forge.jar
-seamless-crafting-2.1.0+mc26.2-neoforge.jar
+seamless-crafting-2.1.1+mc26.3-fabric.jar
+seamless-crafting-2.1.1+mc26.3-forge.jar
+seamless-crafting-2.1.1+mc26.3-neoforge.jar
 ```
 
 See [PORTING.md](PORTING.md) for version-port boundaries and

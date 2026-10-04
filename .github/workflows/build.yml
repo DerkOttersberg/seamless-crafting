@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main, 'port/**', 'support/**', 'feat/**', 'fix/**', 'release/**']
+    branches: [main, '26.2', '26.3', 'port/**', 'support/**', 'feat/**', 'fix/**', 'release/**']
   pull_request:
 
 permissions:
@@ -22,12 +22,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - id: fabric-api-0.158
-            loader: fabric
-            gradle_args: -PfabricApiVersion=0.158.0+26.2
           - id: fabric
             loader: fabric
-            gradle_args: -PfabricApiVersion=0.159.0+26.2
+            gradle_args: -PfabricApiVersion=0.161.0+26.3
           - id: forge
             loader: forge
             gradle_args: ''

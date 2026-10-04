@@ -567,7 +567,7 @@ public final class NearbyRecipePlacementTransaction {
             gridSlots.get(index).set(gridSnapshot.get(index).copy());
         }
         for (ItemStack remainder : fallback) {
-            inventory.placeItemBackInInventory(remainder, false);
+            inventory.placeItemBackInInventory(remainder, false, net.minecraft.util.Prediction.SERVER_ONLY);
         }
         inventory.setChanged();
     }

@@ -145,7 +145,7 @@ public abstract class LevelRendererMixin {
 
             PoseStack pose = new PoseStack();
             pose.translate(anchor.x - camera.x, anchor.y - camera.y + DISTANCE_LABEL_HEIGHT, anchor.z - camera.z);
-            pose.mulPose(Axis.YP.rotationDegrees(yaw));
+            pose.rotate(Axis.YP.rotationDegrees(yaw));
             pose.scale(-0.025f, -0.025f, 0.025f);
             collector.order(1).submitText(
                 pose,
