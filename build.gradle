@@ -177,6 +177,9 @@ tasks.register('verifyLoaderJars') {
                     requireEqual(metadata.version, exactVersion, 'Fabric version')
                     requireEqual(metadata.name, 'Seamless Crafting', 'Fabric canonical name')
                     requireEqual(metadata.license, 'CC0-1.0', 'Fabric license')
+                    requireEqual(metadata.suggests.modmenu,
+                        ">=${libs.versions.modmenu.get()} <${libs.versions.modmenu.get().tokenize('.')[0].toInteger() + 1}.0.0",
+                        'Fabric optional Mod Menu range')
                     def expectedDependencies = [
                         fabricloader: ">=${libs.versions.fabric.loader.get()}",
                         'fabric-api': ">=${libs.versions.fabric.supported.api.minimum.get()} <${libs.versions.fabric.supported.api.maximum.exclusive.get()}",

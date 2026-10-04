@@ -39,7 +39,8 @@ def metadataProperties = [
     fabric_loader_range: ">=${libs.versions.fabric.loader.get()}",
     fabric_api_range: ">=${libs.versions.fabric.supported.api.minimum.get()} <${libs.versions.fabric.supported.api.maximum.exclusive.get()}",
     minecraft_range: libs.versions.minecraft.get(),
-    java_range: ">=${libs.versions.java.get()}"
+    java_range: ">=${libs.versions.java.get()}",
+    modmenu_range: ">=${libs.versions.modmenu.get()} <${libs.versions.modmenu.get().tokenize('.')[0].toInteger() + 1}.0.0"
 ]
 processResources {
     inputs.properties metadataProperties

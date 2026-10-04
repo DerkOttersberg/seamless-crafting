@@ -8,6 +8,8 @@
   networking without changing public compatibility or registry namespaces.
 - Preserve current config migration, UI clarity and item-conservation safeguards.
 - Add optional JEI 15 exclusion/ingredient adapters on both loaders.
+- Correct optional Mod Menu metadata to the catalog's tested 1.20.1 / 7.x line
+  and verify its packaged range during the build.
 
 
 ## 2.1.1+mc26.3
