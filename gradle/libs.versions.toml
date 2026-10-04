@@ -5,6 +5,7 @@ architectury-plugin = "3.5.169"
 architectury-loom = "1.17.491"
 fabric-loader = "0.19.3"
 fabric-api = "0.159.0+26.2"
+modmenu = "20.0.3"
 fabric-supported-api-minimum = "0.158.0"
 fabric-supported-api-maximum-exclusive = "0.160.0"
 forge = "26.2-65.1.3"
@@ -16,6 +17,7 @@ jei = "30.29.0.199"
 minecraft = { module = "com.mojang:minecraft", version.ref = "minecraft" }
 fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
 fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabric-api" }
+modmenu = { module = "com.terraformersmc:modmenu", version.ref = "modmenu" }
 forge = { module = "net.minecraftforge:forge", version.ref = "forge" }
 neoforge = { module = "net.neoforged:neoforge", version.ref = "neoforge" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
