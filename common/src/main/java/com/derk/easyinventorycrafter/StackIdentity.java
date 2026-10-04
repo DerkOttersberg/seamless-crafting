@@ -17,7 +17,7 @@ public final class StackIdentity {
             throw new IllegalArgumentException("stack must not be empty");
         }
         representative = stack.copyWithCount(1);
-        hash = ItemStack.hashItemAndComponents(representative);
+        hash = 31 * System.identityHashCode(representative.getItem()) + java.util.Objects.hashCode(representative.getTag());
     }
 
     public static StackIdentity of(ItemStack stack) {
@@ -29,14 +29,14 @@ public final class StackIdentity {
     }
 
     public boolean matches(ItemStack stack) {
-        return stack != null && !stack.isEmpty() && ItemStack.isSameItemSameComponents(representative, stack);
+        return stack != null && !stack.isEmpty() && ItemStack.isSameItemSameTags(representative, stack);
     }
 
     @Override
     public boolean equals(Object other) {
         return this == other
             || other instanceof StackIdentity identity
-            && ItemStack.isSameItemSameComponents(representative, identity.representative);
+            && ItemStack.isSameItemSameTags(representative, identity.representative);
     }
 
     @Override

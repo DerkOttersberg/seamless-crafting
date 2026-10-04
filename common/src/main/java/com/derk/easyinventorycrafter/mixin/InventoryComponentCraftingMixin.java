@@ -1,7 +1,7 @@
 package com.derk.easyinventorycrafter.mixin;
 
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.StackedItemContents;
+import net.minecraft.world.entity.player.StackedContents;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,12 +12,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Inventory.class)
 public class InventoryComponentCraftingMixin {
     @Inject(method = "fillStackedContents", at = @At("TAIL"))
-    private void derk$accountComponentStacks(StackedItemContents contents, CallbackInfo ci) {
+    private void derk$accountComponentStacks(StackedContents contents, CallbackInfo ci) {
         Inventory inventory = (Inventory) (Object) this;
-        for (ItemStack stack : inventory.getNonEquipmentItems()) {
+        for (ItemStack stack : inventory.items) {
             // Vanilla already accounted simple stacks; add only the protected
             // component-bearing stacks that vanilla deliberately skipped.
-            if (!stack.isEmpty() && !Inventory.isUsableForCrafting(stack)) {
+            if (!stack.isEmpty() && (stack.isDamaged() || stack.isEnchanted() || stack.hasCustomHoverName())) {
                 contents.accountStack(stack);
             }
         }

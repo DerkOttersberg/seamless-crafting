@@ -1,88 +1,96 @@
-name: Build
+name: build
 
 on:
   push:
-    branches: [main, '26.2', '26.3', 'port/**', 'support/**', 'feat/**', 'fix/**', 'release/**']
+    branches: ['1.20.1', 'feat/**', 'fix/**']
   pull_request:
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    working-directory: seamless-crafting
 
 jobs:
   wrapper-validation:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: seamless-crafting
+      - uses: actions/checkout@v4
+        with:
+          repository: DerkOttersberg/seamless-api
+          ref: '1432bd166e8a25700233ae8509fc9f093232b590'
+          path: seamless-api
       - uses: gradle/actions/wrapper-validation@v4
 
-  loader:
-    name: ${{ matrix.id }}
-    runs-on: ubuntu-24.04
+  loader-builds:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - id: fabric
-            loader: fabric
-            gradle_args: -PfabricApiVersion=0.161.0+26.3
-          - id: forge
-            loader: forge
-            gradle_args: ''
-          - id: neoforge
-            loader: neoforge
-            gradle_args: ''
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '25'
-      - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew :common:check :${{ matrix.loader }}:check :${{ matrix.loader }}:build ${{ matrix.gradle_args }}
-      - name: Upload test reports and logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: reports-${{ matrix.id }}
-          path: |
-            **/build/reports/**
-            **/build/test-results/**
-            **/build/run/gameTest/logs/**
-            **/build/gametest/logs/**
-            **/build/**/crash-reports/**
-          if-no-files-found: ignore
-
-  verify:
-    name: common-and-packaging
-    needs: [wrapper-validation, loader]
-    if: ${{ always() }}
+        loader: [fabric, forge]
     runs-on: ubuntu-24.04
     steps:
-      - name: Require successful protected prerequisite jobs
-        env:
-          WRAPPER_VALIDATION_RESULT: ${{ needs.wrapper-validation.result }}
-          LOADER_RESULT: ${{ needs.loader.result }}
-        run: |
-          if [[ "$WRAPPER_VALIDATION_RESULT" != "success" || "$LOADER_RESULT" != "success" ]]; then
-            echo "Required jobs failed: wrapper-validation=$WRAPPER_VALIDATION_RESULT loader=$LOADER_RESULT"
-            exit 1
-          fi
       - uses: actions/checkout@v4
+        with:
+          path: seamless-crafting
+      - uses: actions/checkout@v4
+        with:
+          repository: DerkOttersberg/seamless-api
+          ref: '1432bd166e8a25700233ae8509fc9f093232b590'
+          path: seamless-api
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew clean check build --no-parallel
-      - name: Upload aggregate reports and logs
+      - run: ./gradlew --no-daemon :common:check :${{ matrix.loader }}:check :${{ matrix.loader }}:build
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: reports-common-and-packaging
-          path: |
-            **/build/reports/**
-            **/build/test-results/**
-            **/build/run/gameTest/logs/**
-            **/build/gametest/logs/**
-            **/build/**/crash-reports/**
+          name: seamless-crafting-${{ matrix.loader }}-reports
           if-no-files-found: ignore
+          path: |
+            seamless-crafting/**/build/reports/**
+            seamless-crafting/**/build/test-results/**
+            seamless-crafting/**/logs/**
+            seamless-crafting/**/crash-reports/**
+
+  verification:
+    needs: [wrapper-validation, loader-builds]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: seamless-crafting
+      - uses: actions/checkout@v4
+        with:
+          repository: DerkOttersberg/seamless-api
+          ref: '1432bd166e8a25700233ae8509fc9f093232b590'
+          path: seamless-api
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew --no-daemon clean check build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: seamless-crafting-verification
+          if-no-files-found: ignore
+          path: |
+            seamless-crafting/**/build/reports/**
+            seamless-crafting/**/build/test-results/**
+            seamless-crafting/fabric/build/libs/*
+            seamless-crafting/forge/build/libs/*

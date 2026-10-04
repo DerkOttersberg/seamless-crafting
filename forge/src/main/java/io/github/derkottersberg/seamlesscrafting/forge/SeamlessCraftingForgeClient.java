@@ -10,8 +10,10 @@ import io.github.derkottersberg.seamlesscrafting.SeamlessCraftingClientBootstrap
 import io.github.derkottersberg.seamlesscrafting.internal.ClientPlatformServices;
 import java.nio.file.Path;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.derk.easyinventorycrafter.net.CommonPayload;
 import net.minecraftforge.client.ConfigScreenHandler;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -23,12 +25,13 @@ final class SeamlessCraftingForgeClient {
 
     static void initialize(FMLJavaModLoadingContext context) {
         SeamlessCraftingClientBootstrap.initialize(new ForgeClientPlatformServices());
-        TickEvent.ClientTickEvent.Post.BUS.addListener(event ->
-            EasyInventoryCrafterClient.tick(Minecraft.getInstance()));
-        ClientPlayerNetworkEvent.LoggingOut.BUS.addListener(event -> NearbyItemsClientState.clear());
-        context.getContainer().registerExtensionPoint(
+        MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> {
+            if (event.phase == TickEvent.Phase.END) EasyInventoryCrafterClient.tick(Minecraft.getInstance());
+        });
+        MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> NearbyItemsClientState.clear());
+        ModLoadingContext.get().registerExtensionPoint(
             ConfigScreenHandler.ConfigScreenFactory.class,
-            () -> new ConfigScreenHandler.ConfigScreenFactory(EasyInventoryCrafterConfigScreen::new)
+            () -> new ConfigScreenHandler.ConfigScreenFactory((minecraft, parent) -> new EasyInventoryCrafterConfigScreen(parent))
         );
     }
 
@@ -52,7 +55,7 @@ final class SeamlessCraftingForgeClient {
         }
 
         @Override
-        public void sendToServer(CustomPacketPayload payload) {
+        public void sendToServer(CommonPayload payload) {
             SeamlessCraftingForge.sendToServer(payload);
         }
     }

@@ -14,12 +14,13 @@ import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.client.renderer.state.level.LevelRenderState;
+import net.minecraft.client.Camera;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.ARGB;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
@@ -38,41 +39,28 @@ public abstract class LevelRendererMixin {
     private static final float HIGHLIGHT_FACE_OFFSET = 0.003f;
     private static final float DISTANCE_LABEL_HEIGHT = 1.02f;
 
-    @Inject(method = "submitFeatures", at = @At("TAIL"))
-    private void derk$submitHighlights(
-        LevelRenderState renderState,
-        SubmitNodeCollector collector,
-        boolean outlines,
-        CallbackInfo ci
-    ) {
+    @Inject(method = "renderLevel", at = @At("TAIL"))
+    private void derk$renderHighlights(PoseStack pose, float partialTick, long finishNanoTime,
+            boolean outlines, Camera activeCamera, GameRenderer renderer, LightTexture lightTexture,
+            Matrix4f projection, CallbackInfo ci) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (!NearbyItemsClientState.hasHighlight() || minecraft.level == null) {
-            return;
-        }
-
+        if (!NearbyItemsClientState.hasHighlight() || minecraft.level == null) return;
         List<BlockPos> positions = List.copyOf(NearbyItemsClientState.getHighlightPositions());
-        if (positions.isEmpty()) {
-            return;
-        }
-
-        Vec3 camera = renderState.cameraRenderState.pos;
+        if (positions.isEmpty()) return;
+        Vec3 camera = activeCamera.getPosition();
         float fade = NearbyItemsClientState.getHighlightAlpha();
         int rgb = EasyInventoryCrafterConfig.getHighlightColor();
         int alpha = Math.max(0, Math.min(255, Math.round(fade * EasyInventoryCrafterConfig.getHighlightOpacity() * 255.0f)));
-        int color = ARGB.color(alpha, (rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
-        List<HighlightBox> boxes = derk$extractBoxes(minecraft, positions, camera);
-
-        if (!boxes.isEmpty()) {
-            collector.submitCustomGeometry(new PoseStack(), RenderTypes.debugQuads(), (pose, consumer) -> {
-                Matrix4f matrix = pose.pose();
-                for (HighlightBox box : boxes) {
-                    derk$renderFilledBoxFaces(matrix, consumer, box, color);
-                }
-            });
+        int color = (alpha << 24) | (rgb & 0xFFFFFF);
+        MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
+        VertexConsumer consumer = buffers.getBuffer(RenderType.debugQuads());
+        for (HighlightBox box : derk$extractBoxes(minecraft, positions, camera)) {
+            derk$renderFilledBoxFaces(pose.last().pose(), consumer, box, color);
         }
-
+        buffers.endBatch(RenderType.debugQuads());
         if (EasyInventoryCrafterConfig.isDistanceLabelEnabled() && minecraft.player != null) {
-            derk$submitDistanceLabels(minecraft, collector, renderState, positions, camera, fade);
+            derk$submitDistanceLabels(minecraft, buffers, pose, positions, camera, fade);
+            buffers.endBatch();
         }
     }
 
@@ -104,8 +92,8 @@ public abstract class LevelRendererMixin {
 
     private static void derk$submitDistanceLabels(
         Minecraft minecraft,
-        SubmitNodeCollector collector,
-        LevelRenderState renderState,
+        MultiBufferSource.BufferSource buffers,
+        PoseStack worldPose,
         List<BlockPos> positions,
         Vec3 camera,
         float fade
@@ -125,7 +113,7 @@ public abstract class LevelRendererMixin {
 
             Vec3 anchor = Vec3.atBottomCenterOf(pos);
             if (state.getBlock() instanceof ChestBlock && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
-                BlockPos connected = ChestBlock.getConnectedBlockPos(pos, state);
+                BlockPos connected = pos.relative(ChestBlock.getConnectedDirection(state));
                 if (highlighted.contains(connected) && minecraft.level.isLoaded(connected)) {
                     labeled.add(connected);
                     anchor = new Vec3(
@@ -138,27 +126,18 @@ public abstract class LevelRendererMixin {
 
             String text = String.format(Locale.ROOT, "%.1fm", Math.sqrt(eye.distanceToSqr(anchor)));
             int textAlpha = Math.max(64, Math.min(255, Math.round(fade * 255.0f)));
-            int textColor = ARGB.color(textAlpha, 255, 255, 255);
-            int backgroundColor = ARGB.color(Math.max(48, textAlpha / 2), 0, 0, 0);
+            int textColor = (textAlpha << 24) | 0xFFFFFF;
+            int backgroundColor = Math.max(48, textAlpha / 2) << 24;
             float textX = -minecraft.font.width(text) / 2.0f;
             float yaw = (float) Math.toDegrees(Math.atan2(eye.x - anchor.x, eye.z - anchor.z)) + 180.0f;
 
-            PoseStack pose = new PoseStack();
-            pose.translate(anchor.x - camera.x, anchor.y - camera.y + DISTANCE_LABEL_HEIGHT, anchor.z - camera.z);
-            pose.rotate(Axis.YP.rotationDegrees(yaw));
-            pose.scale(-0.025f, -0.025f, 0.025f);
-            collector.order(1).submitText(
-                pose,
-                textX,
-                0.0f,
-                Component.literal(text).getVisualOrderText(),
-                false,
-                Font.DisplayMode.SEE_THROUGH,
-                15728880,
-                textColor,
-                backgroundColor,
-                0
-            );
+            worldPose.pushPose();
+            worldPose.translate(anchor.x - camera.x, anchor.y - camera.y + DISTANCE_LABEL_HEIGHT, anchor.z - camera.z);
+            worldPose.mulPose(Axis.YP.rotationDegrees(yaw));
+            worldPose.scale(-0.025f, -0.025f, 0.025f);
+            minecraft.font.drawInBatch(text, textX, 0, textColor, false, worldPose.last().pose(),
+                buffers, Font.DisplayMode.SEE_THROUGH, backgroundColor, 15728880);
+            worldPose.popPose();
         }
     }
 
@@ -192,9 +171,9 @@ public abstract class LevelRendererMixin {
         float x4, float y4, float z4,
         int color
     ) {
-        consumer.addVertex(matrix, x1, y1, z1).setColor(color);
-        consumer.addVertex(matrix, x2, y2, z2).setColor(color);
-        consumer.addVertex(matrix, x3, y3, z3).setColor(color);
-        consumer.addVertex(matrix, x4, y4, z4).setColor(color);
+        consumer.vertex(matrix, x1, y1, z1).color(color).endVertex();
+        consumer.vertex(matrix, x2, y2, z2).color(color).endVertex();
+        consumer.vertex(matrix, x3, y3, z3).color(color).endVertex();
+        consumer.vertex(matrix, x4, y4, z4).color(color).endVertex();
     }
 }

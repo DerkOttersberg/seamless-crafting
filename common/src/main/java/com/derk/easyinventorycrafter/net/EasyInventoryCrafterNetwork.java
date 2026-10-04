@@ -5,7 +5,7 @@ import io.github.derkottersberg.seamlesscrafting.internal.ClientPlatformServices
 import io.github.derkottersberg.seamlesscrafting.internal.PlatformServices;
 import java.util.List;
 import java.util.Objects;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.derk.easyinventorycrafter.net.CommonPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.InventoryMenu;
@@ -26,7 +26,7 @@ public final class EasyInventoryCrafterNetwork {
         clientPlatform = Objects.requireNonNull(services, "services");
     }
 
-    public static void sendToPlayer(ServerPlayer player, CustomPacketPayload packet) {
+    public static void sendToPlayer(ServerPlayer player, CommonPayload packet) {
         PlatformServices services = platform;
         if (services == null) {
             throw new IllegalStateException("Server networking has not been initialized");
@@ -34,7 +34,7 @@ public final class EasyInventoryCrafterNetwork {
         services.sendToPlayer(player, packet);
     }
 
-    public static void sendToServer(CustomPacketPayload packet) {
+    public static void sendToServer(CommonPayload packet) {
         ClientPlatformServices services = clientPlatform;
         if (services == null) {
             throw new IllegalStateException("Client networking has not been initialized");

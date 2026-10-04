@@ -11,13 +11,13 @@ import io.github.derkottersberg.seamlesscrafting.SeamlessCraftingMod;
 import io.github.derkottersberg.seamlesscrafting.internal.PlatformServices;
 import java.nio.file.Path;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.derk.easyinventorycrafter.net.CommonPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -28,18 +28,18 @@ import org.jetbrains.annotations.Nullable;
 public final class SeamlessCraftingFabric implements ModInitializer {
     @Override
     public void onInitialize() {
-        PayloadTypeRegistry.serverboundPlay().register(RequestNearbyItemsPacket.TYPE, RequestNearbyItemsPacket.STREAM_CODEC);
-        PayloadTypeRegistry.serverboundPlay().register(NearbyHighlightRequestPacket.TYPE, NearbyHighlightRequestPacket.STREAM_CODEC);
-        PayloadTypeRegistry.serverboundPlay().register(ReturnNearbyItemsPacket.TYPE, ReturnNearbyItemsPacket.STREAM_CODEC);
-        PayloadTypeRegistry.clientboundPlay().register(NearbyItemsPacket.TYPE, NearbyItemsPacket.STREAM_CODEC);
-        PayloadTypeRegistry.clientboundPlay().register(NearbyHighlightResponsePacket.TYPE, NearbyHighlightResponsePacket.STREAM_CODEC);
-
-        ServerPlayNetworking.registerGlobalReceiver(RequestNearbyItemsPacket.TYPE, (payload, context) ->
-            context.server().execute(() -> EasyInventoryCrafterNetwork.handleRequestNearbyItems(context.player(), payload)));
-        ServerPlayNetworking.registerGlobalReceiver(NearbyHighlightRequestPacket.TYPE, (payload, context) ->
-            context.server().execute(() -> EasyInventoryCrafterNetwork.handleHighlightRequest(context.player(), payload)));
-        ServerPlayNetworking.registerGlobalReceiver(ReturnNearbyItemsPacket.TYPE, (payload, context) ->
-            context.server().execute(() -> EasyInventoryCrafterNetwork.handleReturnNearbyItems(context.player(), payload)));
+        ServerPlayNetworking.registerGlobalReceiver(RequestNearbyItemsPacket.TYPE.id(), (server, player, handler, buffer, response) -> {
+            RequestNearbyItemsPacket payload = RequestNearbyItemsPacket.STREAM_CODEC.decode(buffer);
+            server.execute(() -> EasyInventoryCrafterNetwork.handleRequestNearbyItems(player, payload));
+        });
+        ServerPlayNetworking.registerGlobalReceiver(NearbyHighlightRequestPacket.TYPE.id(), (server, player, handler, buffer, response) -> {
+            NearbyHighlightRequestPacket payload = NearbyHighlightRequestPacket.STREAM_CODEC.decode(buffer);
+            server.execute(() -> EasyInventoryCrafterNetwork.handleHighlightRequest(player, payload));
+        });
+        ServerPlayNetworking.registerGlobalReceiver(ReturnNearbyItemsPacket.TYPE.id(), (server, player, handler, buffer, response) -> {
+            ReturnNearbyItemsPacket payload = ReturnNearbyItemsPacket.STREAM_CODEC.decode(buffer);
+            server.execute(() -> EasyInventoryCrafterNetwork.handleReturnNearbyItems(player, payload));
+        });
 
         SeamlessCraftingMod.initialize(new FabricPlatformServices());
     }
@@ -56,8 +56,13 @@ public final class SeamlessCraftingFabric implements ModInitializer {
         }
 
         @Override
-        public void sendToPlayer(ServerPlayer player, CustomPacketPayload payload) {
-            ServerPlayNetworking.send(player, payload);
+        public void sendToPlayer(ServerPlayer player, CommonPayload payload) {
+            if (!ServerPlayNetworking.canSend(player, payload.type().id())) return;
+            var buffer = PacketByteBufs.create();
+            if (payload instanceof NearbyItemsPacket items) NearbyItemsPacket.STREAM_CODEC.encode(buffer, items);
+            else if (payload instanceof NearbyHighlightResponsePacket highlight) NearbyHighlightResponsePacket.STREAM_CODEC.encode(buffer, highlight);
+            else throw new IllegalArgumentException("Not a clientbound Seamless Crafting packet");
+            ServerPlayNetworking.send(player, payload.type().id(), buffer);
         }
 
         @Override

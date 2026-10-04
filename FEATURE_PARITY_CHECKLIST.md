@@ -1,54 +1,32 @@
-# Minecraft 26.2 Feature and Verification Checklist
+# Minecraft 1.20.1 feature and verification checklist
+
+Fabric and Forge only. Historical 26.x checkmarks are not acceptance evidence
+for this branch; see those version branches for their reports.
 
 ## Implemented
 
-- [x] Nearby panels in crafting-table and player-inventory screens
-- [x] Search, sorting, scrolling, counts, locate action, and auto-refresh
-- [x] Nearby-assisted recipe-book availability and quick placement
-- [x] Exact component-aware counts, tooltips, and highlighting
-- [x] Whole-grid simulated recipe validation before live mutation
-- [x] Server-authoritative transactional withdrawal and safe return tracking
-- [x] Enchanted/component-bearing player and nearby autofill
-- [x] Fabric Transfer API, Forge item-handler, and NeoForge resource-handler adapters
-- [x] Conservative storage-contract admission and backing-handler deduplication
-- [x] Shared adaptive panel controller with stable loading/empty/partial states
-- [x] Optional JEI overlay/click handlers on Fabric and NeoForge; no EMI on 26.2
-- [x] Menu-close and disconnect cleanup
-- [x] Vanilla double-chest merging, locks, obstruction, and loot handling
-- [x] Bounded VarLong packets with explicit truncation and unloaded-chunk avoidance
-- [x] Filled world-space highlights, distance labels, and locate trail
-- [x] Configuration and color-picker screens on all loaders
-- [x] Canonical configuration migration with retained backups
-- [x] Render-state/pipeline implementation without raw OpenGL
+- [x] Inventory/table nearby panels, search, sorting, scrolling and locate actions
+- [x] Server-authoritative recipe placement, withdrawal/return and close cleanup
+- [x] Exact NBT/enchantment identity, bounded counts and packet validation
+- [x] Grid simulation, variant backtracking, partial-commit rollback and conservation
+- [x] Double-chest deduplication, lock/obstruction checks and unloaded-chunk avoidance
+- [x] Fabric Transfer API and Forge item-handler adapters
+- [x] Optional JEI 15 exclusions and ingredient lookup on both loaders
+- [x] Vanilla RenderType highlights, distance labels and trails without raw OpenGL
+- [x] Clear configuration screens and legacy migration with backups
 
-## Automated verification
+## Verification
 
-- [x] Java 25 `clean check build`
-- [x] Fabric, Forge, and NeoForge metadata isolation
-- [x] Exact processed/packaged metadata, CC0 license, and test-class exclusion
-- [x] Fabric API 0.158 and 0.159 CI lanes
-- [x] Canonical double-chest key and merged-count accounting tests
-- [x] Count overflow saturation test
-- [x] Legacy and invalid configuration backup tests
-- [x] Live double-chest deduplication and two-half highlighting GameTest
-- [x] Live exact-component recipe placement, pre-commit variant backtracking,
-  cancellation, rollback, and item-conservation GameTests on all loaders
-- [x] Live maximum-craft exact-component placement and cancellation conservation
-- [x] Live rollback after a storage mutates and then partially fails extraction
-- [x] Deterministic grid/player/storage source-priority regression coverage
-- [x] Live locked-container and unloaded-chunk scan coverage without mutation/loading
-- [x] Live standard loader-storage adapter failure/fallback/conservation GameTests
-- [x] Live capability-only block-entity discovery through every loader's world scan
-- [x] Live ambiguous/read-only/wrong-identity/partial-extraction rejection and
-  duplicate physical-storage view GameTests on all loaders
-- [x] GameTest discovery-count guards on Fabric, Forge, and NeoForge
+- [x] Unit tests for accounting, migration, UI layout and mixin targets
+- [x] Eleven Fabric and twelve Forge required native GameTests
+- [x] Discovery-count guards, loader metadata isolation, license and Java 17 bytecode checks
+- [x] No QA classes, shaded Seamless API or bundled JEI classes in release jars
+- [x] Real isolated clients with JEI: nearby synchronization, autofill and exact NBT return
+- [x] Untouched production jars load in combined dedicated servers and survive restart
+- [ ] Final combined real-client acceptance evidence recorded in suite report
+- [ ] Remote GitHub CI independently passes (account billing lock is not a pass)
+- [ ] Native packaged Forge-launcher client acceptance
+- [ ] Two-client multiplayer disconnect/reconnect acceptance for this backport
 
-## Runtime smoke tests
-
-- [x] Fabric 26.2 client reaches title screen
-- [x] Forge 26.2 client reaches title screen
-- [x] NeoForge 26.2 client reaches title screen
-- [x] Fabric, Forge, and NeoForge combined dedicated-server boots
-- [x] In-world nearby item withdrawal and cancellation conservation
-- [x] Real two-client disconnect/reconnect and inventory/table close conservation on all three loaders
-- [x] Combined five-mod OpenGL and Vulkan profiles (NeoForge Vulkan requires `earlyWindowControl = false`)
+No vanilla Vulkan backend exists for 1.20.1. Physical-GPU/resource-pack breadth
+and every third-party mod combination are not implied by headless QA.

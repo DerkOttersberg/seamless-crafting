@@ -14,12 +14,12 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /** Loaded by JEI's Fabric entrypoint only; it is inert when JEI is absent. */
 public final class SeamlessCraftingFabricJeiPlugin implements IModPlugin {
     @Override
-    public Identifier getPluginUid() {
+    public ResourceLocation getPluginUid() {
         return SeamlessCraftingMod.id("jei_overlay");
     }
 

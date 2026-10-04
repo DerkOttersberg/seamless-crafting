@@ -4,7 +4,7 @@ import com.derk.easyinventorycrafter.EasyInventoryCrafterConfig;
 import com.derk.easyinventorycrafter.net.EasyInventoryCrafterNetwork;
 import io.github.derkottersberg.seamlesscrafting.internal.PlatformServices;
 import java.util.Objects;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 public final class SeamlessCraftingMod {
     /** Fabric's established public mod id and the canonical 2.0 name. */
@@ -40,11 +40,11 @@ public final class SeamlessCraftingMod {
         return platform;
     }
 
-    public static Identifier id(String path) {
-        return Identifier.fromNamespaceAndPath(CANONICAL_ID, path);
+    public static ResourceLocation id(String path) {
+        return new ResourceLocation(CANONICAL_ID, path);
     }
 
-    public static Identifier networkId(String path) {
-        return Identifier.fromNamespaceAndPath(NETWORK_ID, path);
+    public static ResourceLocation networkId(String path) {
+        return new ResourceLocation(NETWORK_ID, path);
     }
 }

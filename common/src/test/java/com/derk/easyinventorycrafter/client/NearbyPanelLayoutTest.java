@@ -30,9 +30,9 @@ class NearbyPanelLayoutTest {
         NearbyPanelLayout layout = NearbyPanelLayout.calculate(360, 240, 92, 40, 176, true, true, 84);
 
         assertFalse(layout.expanded());
-        assertEquals(20, layout.visibleBounds().getFirst().height());
+        assertEquals(20, layout.visibleBounds().get(0).height());
         assertEquals(272, layout.panelX());
-        assertEquals(84, layout.visibleBounds().getFirst().width());
+        assertEquals(84, layout.visibleBounds().get(0).width());
     }
 
     @Test

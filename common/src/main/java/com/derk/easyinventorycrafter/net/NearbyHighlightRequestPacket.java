@@ -1,22 +1,22 @@
 package com.derk.easyinventorycrafter.net;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.network.FriendlyByteBuf;
+import com.derk.easyinventorycrafter.net.PacketCodec;
+import com.derk.easyinventorycrafter.net.CommonPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import io.github.derkottersberg.seamlesscrafting.SeamlessCraftingMod;
 
-public record NearbyHighlightRequestPacket(ItemStack stack) implements CustomPacketPayload {
+public record NearbyHighlightRequestPacket(ItemStack stack) implements CommonPayload {
     public static final Type<NearbyHighlightRequestPacket> TYPE = new Type<>(SeamlessCraftingMod.networkId("nearby_highlight_request"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, NearbyHighlightRequestPacket> STREAM_CODEC = StreamCodec.of((buf, packet) -> packet.write(buf), NearbyHighlightRequestPacket::decode);
+    public static final PacketCodec<FriendlyByteBuf, NearbyHighlightRequestPacket> STREAM_CODEC = PacketCodec.of((buf, packet) -> packet.write(buf), NearbyHighlightRequestPacket::decode);
 
-    public static NearbyHighlightRequestPacket decode(RegistryFriendlyByteBuf buf) {
-        return new NearbyHighlightRequestPacket(ItemStack.OPTIONAL_STREAM_CODEC.decode(buf));
+    public static NearbyHighlightRequestPacket decode(FriendlyByteBuf buf) {
+        return new NearbyHighlightRequestPacket(buf.readItem());
     }
 
-    public void write(RegistryFriendlyByteBuf buf) {
-        ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
+    public void write(FriendlyByteBuf buf) {
+        buf.writeItem(stack);
     }
 
     @Override

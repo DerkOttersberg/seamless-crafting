@@ -1,4 +1,4 @@
-package io.github.derkottersberg.seamlesscrafting.neoforge;
+package io.github.derkottersberg.seamlesscrafting.forge;
 
 import com.derk.easyinventorycrafter.client.HoveredNearbyStack;
 import com.derk.easyinventorycrafter.client.NearbyPanelAccess;
@@ -6,7 +6,6 @@ import io.github.derkottersberg.seamlesscrafting.SeamlessCraftingMod;
 import java.util.List;
 import java.util.Optional;
 import mezz.jei.api.IModPlugin;
-import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.gui.builder.IClickableIngredientFactory;
 import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
@@ -15,14 +14,14 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
-/** Discovered by JEI's NeoForge annotation scanner only. */
-@JeiPlugin
-public final class SeamlessCraftingNeoForgeJeiPlugin implements IModPlugin {
+/** Optional JEI overlay exclusions and exact nearby-item hover integration. */
+@mezz.jei.api.JeiPlugin
+public final class SeamlessCraftingForgeJeiPlugin implements IModPlugin {
     @Override
-    public Identifier getPluginUid() {
-        return Identifier.fromNamespaceAndPath(SeamlessCraftingMod.FORGE_ID, "jei_overlay");
+    public ResourceLocation getPluginUid() {
+        return SeamlessCraftingMod.id("jei_overlay");
     }
 
     @Override

@@ -1,7 +1,6 @@
 {
   "pack": {
     "description": "Seamless Crafting Forge GameTest resources",
-    "min_format": [97, 1],
-    "max_format": [121, 0]
+    "pack_format": 15
   }
 }

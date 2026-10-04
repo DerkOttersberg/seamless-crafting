@@ -2,53 +2,57 @@ package com.derk.easyinventorycrafter.mixin;
 
 import com.derk.easyinventorycrafter.client.NearbyRecipeBookRefreshAccess;
 import com.derk.easyinventorycrafter.client.NearbyRecipeBookComponentAccess;
-import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
 import com.derk.easyinventorycrafter.client.NearbyPanelAccess;
-import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.CraftingScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(AbstractRecipeBookScreen.class)
-public class AbstractRecipeBookScreenMixin implements NearbyRecipeBookRefreshAccess {
-    @Shadow
-    private RecipeBookComponent<?> recipeBookComponent;
-
-    @Inject(method = "charTyped", at = @At("HEAD"), cancellable = true)
-    private void derk$handleCharTyped(CharacterEvent input, CallbackInfoReturnable<Boolean> cir) {
-        if ((Object) this instanceof NearbyPanelAccess access) {
-            if (access.derk$handleCharTyped(input)) {
-                cir.setReturnValue(true);
-            }
-        }
+/** 1.20.1 has two recipe-book screens, without a shared recipe-book superclass. */
+@Mixin({CraftingScreen.class, InventoryScreen.class})
+public abstract class AbstractRecipeBookScreenMixin extends AbstractContainerScreen<AbstractContainerMenu>
+        implements NearbyRecipeBookRefreshAccess {
+    private RecipeBookComponent derk$recipeBook() {
+        return ((net.minecraft.client.gui.screens.recipebook.RecipeUpdateListener) (Object) this).getRecipeBookComponent();
     }
 
-    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
-    private void derk$handleKeyPressed(KeyEvent input, CallbackInfoReturnable<Boolean> cir) {
-        if ((Object) this instanceof NearbyPanelAccess access) {
-            if (access.derk$handleKeyPressed(input)) {
-                cir.setReturnValue(true);
-            }
-        }
+    protected AbstractRecipeBookScreenMixin(AbstractContainerMenu menu, Inventory inventory, Component title) {
+        super(menu, inventory, title);
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if ((Object) this instanceof NearbyPanelAccess access && access.derk$handleCharTyped(codePoint, modifiers)) return true;
+        return derk$recipeBook().charTyped(codePoint, modifiers) || super.charTyped(codePoint, modifiers);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if ((Object) this instanceof NearbyPanelAccess access && access.derk$handleKeyPressed(keyCode, scanCode, modifiers)) return true;
+        return derk$recipeBook().keyPressed(keyCode, scanCode, modifiers) || super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+        if ((Object) this instanceof NearbyPanelAccess access && access.derk$handleScroll(mouseX, mouseY, amount)) return true;
+        return super.mouseScrolled(mouseX, mouseY, amount);
     }
 
     @Override
     public void derk$refreshNearbyRecipeBook() {
-        // A hidden recipe book has not created its tab widgets yet. Calling
-        // updateStackedContents in that state reaches updateCollections with a
-        // null selectedTab on Minecraft 26.2. Vanilla initializes the tabs when
-        // the book is opened, so defer the nearby refresh until it is visible.
-        if (recipeBookComponent.isVisible()) {
-            ((NearbyRecipeBookComponentAccess) recipeBookComponent).derk$refreshStackedContents();
+        // Tabs are initialized only while the book is visible.
+        if (derk$recipeBook().isVisible()) {
+            ((NearbyRecipeBookComponentAccess) derk$recipeBook()).derk$refreshStackedContents();
         }
     }
 
     @Override
     public boolean derk$isRecipeBookVisible() {
-        return recipeBookComponent.isVisible();
+        return derk$recipeBook().isVisible();
     }
 }

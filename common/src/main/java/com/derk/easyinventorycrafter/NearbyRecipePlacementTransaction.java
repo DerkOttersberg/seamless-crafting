@@ -6,21 +6,22 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import net.minecraft.core.Holder;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.recipebook.PlaceRecipeHelper;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import net.minecraft.world.inventory.TransientCraftingContainer;
+import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.recipebook.PlaceRecipe;
 import net.minecraft.recipebook.ServerPlaceRecipe;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.StackedItemContents;
-import net.minecraft.world.inventory.AbstractCraftingMenu;
+import net.minecraft.world.entity.player.StackedContents;
+
 import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,8 @@ import org.slf4j.LoggerFactory;
  * commit restores the player/grid snapshots and returns extracted items.
  */
 public final class NearbyRecipePlacementTransaction {
+    public enum PostPlaceAction { NOTHING }
+
     private static final Logger LOGGER = LoggerFactory.getLogger("Seamless Crafting/Placement");
     private static final int MAX_COMPONENT_PLAN_BRANCHES = 4_096;
 
@@ -38,16 +41,16 @@ public final class NearbyRecipePlacementTransaction {
     }
 
     @Nullable
-    public static <R extends Recipe<?>> RecipeBookMenu.PostPlaceAction tryPlace(
-        ServerPlaceRecipe.CraftingMenuAccess<R> menuAccess,
+    public static PostPlaceAction tryPlace(
+        RecipeBookMenu menuAccess,
         int gridWidth,
         int gridHeight,
         List<Slot> inputGridSlots,
         Inventory inventory,
-        RecipeHolder<R> recipe,
+        Recipe<?> recipe,
         boolean useMaxItems
     ) {
-        if (!(inventory.player.containerMenu instanceof AbstractCraftingMenu craftingMenu)
+        if (!(inventory.player.containerMenu instanceof RecipeBookMenu<?> craftingMenu)
             || !(craftingMenu instanceof NearbyCraftingAccess nearbyAccess)) {
             return null;
         }
@@ -83,17 +86,17 @@ public final class NearbyRecipePlacementTransaction {
 
     /** Internal live-test seam for exercising commit races after storage admission. */
     @Nullable
-    public static <R extends Recipe<?>> RecipeBookMenu.PostPlaceAction tryPlaceWithStoragesForTesting(
-        ServerPlaceRecipe.CraftingMenuAccess<R> menuAccess,
+    public static PostPlaceAction tryPlaceWithStoragesForTesting(
+        RecipeBookMenu menuAccess,
         int gridWidth,
         int gridHeight,
         List<Slot> inputGridSlots,
         Inventory inventory,
-        RecipeHolder<R> recipe,
+        Recipe<?> recipe,
         boolean useMaxItems,
         List<NearbyStorage> storages
     ) {
-        if (!(inventory.player.containerMenu instanceof AbstractCraftingMenu craftingMenu)
+        if (!(inventory.player.containerMenu instanceof RecipeBookMenu<?> craftingMenu)
             || !(craftingMenu instanceof NearbyCraftingAccess nearbyAccess)) {
             return null;
         }
@@ -112,27 +115,27 @@ public final class NearbyRecipePlacementTransaction {
     }
 
     @Nullable
-    private static <R extends Recipe<?>> RecipeBookMenu.PostPlaceAction tryPlaceWithResolvedStorages(
-        ServerPlaceRecipe.CraftingMenuAccess<R> menuAccess,
+    private static PostPlaceAction tryPlaceWithResolvedStorages(
+        RecipeBookMenu menuAccess,
         int gridWidth,
         int gridHeight,
         List<Slot> inputGridSlots,
         Inventory inventory,
-        RecipeHolder<R> recipe,
+        Recipe<?> recipe,
         boolean useMaxItems,
         NearbyCraftingAccess nearbyAccess,
         List<NearbyStorage> storages
     ) {
-        List<ItemStack> playerSnapshot = copyStacks(inventory.getNonEquipmentItems());
+        List<ItemStack> playerSnapshot = copyStacks(inventory.items);
         List<ItemStack> gridSnapshot = inputGridSlots.stream().map(slot -> slot.getItem().copy()).toList();
         List<Source> sources = snapshotSources(playerSnapshot, gridSnapshot, storages);
-        StackedItemContents combined = accountSources(sources, inputGridSlots.size());
-        if (!combined.canCraft(recipe.value(), null)) {
+        StackedContents combined = accountSources(sources, inputGridSlots.size());
+        if (!combined.canCraft(recipe, null)) {
             return null;
         }
 
         boolean recipeMatches = menuAccess.recipeMatches(recipe);
-        int biggest = combined.getBiggestCraftableStack(recipe.value(), null);
+        int biggest = combined.getBiggestCraftableStack(recipe, null);
         if (biggest <= 0 || recipeMatches && cannotIncrementExistingGrid(inputGridSlots, biggest)) {
             return null;
         }
@@ -140,8 +143,8 @@ public final class NearbyRecipePlacementTransaction {
         int requestedAmount = calculateAmount(useMaxItems, recipeMatches, biggest, inputGridSlots);
         int minimumAmount = useMaxItems ? 1 : requestedAmount;
         for (int amount = requestedAmount; amount >= minimumAmount; amount--) {
-            List<Holder<Item>> chosenItems = new ArrayList<>();
-            if (!combined.canCraft(recipe.value(), amount, chosenItems::add)) {
+            IntArrayList chosenItems = new IntArrayList();
+            if (!combined.canCraft(recipe, chosenItems, amount)) {
                 continue;
             }
             amount = clampToDefaultStackSize(amount, chosenItems);
@@ -149,7 +152,7 @@ public final class NearbyRecipePlacementTransaction {
                 return null;
             }
             chosenItems.clear();
-            if (!combined.canCraft(recipe.value(), amount, chosenItems::add)) {
+            if (!combined.canCraft(recipe, chosenItems, amount)) {
                 continue;
             }
 
@@ -200,17 +203,17 @@ public final class NearbyRecipePlacementTransaction {
         return smallest == Integer.MAX_VALUE ? 1 : smallest + 1;
     }
 
-    private static int clampToDefaultStackSize(int amount, List<Holder<Item>> chosenItems) {
+    private static int clampToDefaultStackSize(int amount, IntArrayList chosenItems) {
         int result = amount;
-        for (Holder<Item> item : chosenItems) {
-            result = Math.min(result, item.components().getOrDefault(DataComponents.MAX_STACK_SIZE, 1));
+        for (int itemId : chosenItems) {
+            result = Math.min(result, StackedContents.fromStackingIndex(itemId).getMaxStackSize());
         }
         return result;
     }
 
     @Nullable
     private static Plan buildPlan(
-        RecipeHolder<?> recipeHolder,
+        Recipe<?> recipeHolder,
         int gridWidth,
         int gridHeight,
         List<Slot> inputGridSlots,
@@ -219,22 +222,23 @@ public final class NearbyRecipePlacementTransaction {
         int amount,
         Inventory inventory
     ) {
-        Recipe<?> recipe = recipeHolder.value();
-        List<Ingredient> ingredients = recipe.placementInfo().ingredients();
+        Recipe<?> recipe = recipeHolder;
+        List<Ingredient> ingredients = recipe.getIngredients();
         List<Source> sources = originalSources.stream().map(Source::copyForPlan).toList();
         List<Target> targets = new ArrayList<>();
-        PlaceRecipeHelper.placeRecipe(
-            gridWidth,
-            gridHeight,
-            recipe,
-            recipe.placementInfo().slotsToIngredientIndex(),
-            (ingredientIndex, slotIndex, x, y) -> {
-                if (ingredientIndex != null && ingredientIndex >= 0 && ingredientIndex < ingredients.size()
-                    && slotIndex >= 0 && slotIndex < inputGridSlots.size()) {
-                    targets.add(new Target(slotIndex, ingredients.get(ingredientIndex), amount));
+        // Use vanilla's 1.20.1 centering rules. Result is menu slot 0;
+        // transaction target indices exclude that result slot.
+        new PlaceRecipe<Ingredient>() {
+            @Override
+            public void addItemToSlot(java.util.Iterator<Ingredient> values, int menuSlot,
+                                      int count, int y, int x) {
+                Ingredient ingredient = values.next();
+                int targetSlot = menuSlot - 1;
+                if (!ingredient.isEmpty() && targetSlot >= 0 && targetSlot < inputGridSlots.size()) {
+                    targets.add(new Target(targetSlot, ingredient, count));
                 }
             }
-        );
+        }.placeRecipe(gridWidth, gridHeight, 0, recipe, ingredients.iterator(), amount);
         targets.sort(Comparator.comparingInt(Target::slotIndex));
         if (targets.isEmpty()) {
             return null;
@@ -264,7 +268,7 @@ public final class NearbyRecipePlacementTransaction {
         List<Source> sources,
         List<ItemStack> playerSnapshot,
         Inventory inventory,
-        RecipeHolder<?> recipe,
+        Recipe<?> recipe,
         int gridWidth,
         int gridHeight,
         SearchBudget budget
@@ -339,7 +343,7 @@ public final class NearbyRecipePlacementTransaction {
             .map(identity -> identityCandidate(identity, target.slotIndex, sources))
             .sorted(Comparator
                 .comparing((IdentityCandidate candidate) -> !candidate.identity.equals(existingIdentity))
-                .thenComparing(candidate -> !candidate.identity.stack().getComponentsPatch().isEmpty())
+                .thenComparing(candidate -> candidate.identity.stack().hasTag())
                 .thenComparingInt(candidate -> candidate.sourcePriority)
                 .thenComparingInt(candidate -> candidate.sourceOrder))
             .map(candidate -> candidate.identity)
@@ -362,7 +366,7 @@ public final class NearbyRecipePlacementTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static boolean matchesPlannedGrid(
-        RecipeHolder<?> recipe,
+        Recipe<?> recipe,
         int gridWidth,
         int gridHeight,
         List<Target> targets,
@@ -375,8 +379,15 @@ public final class NearbyRecipePlacementTransaction {
         for (Target target : targets) {
             simulatedGrid.set(target.slotIndex, target.identity.stack().copyWithCount(target.amount));
         }
-        CraftingInput input = CraftingInput.of(gridWidth, gridHeight, simulatedGrid);
-        return ((Recipe) recipe.value()).matches(input, inventory.player.level());
+        AbstractContainerMenu simulationMenu = new AbstractContainerMenu(null, -1) {
+            @Override public ItemStack quickMoveStack(Player player, int index) { return ItemStack.EMPTY; }
+            @Override public boolean stillValid(Player player) { return false; }
+        };
+        CraftingContainer input = new TransientCraftingContainer(simulationMenu, gridWidth, gridHeight);
+        for (int i = 0; i < simulatedGrid.size(); i++) {
+            input.setItem(i, simulatedGrid.get(i));
+        }
+        return ((Recipe) recipe).matches(input, inventory.player.level());
     }
 
     private static long available(StackIdentity identity, List<Source> sources) {
@@ -414,8 +425,8 @@ public final class NearbyRecipePlacementTransaction {
         return true;
     }
 
-    private static RecipeBookMenu.PostPlaceAction commit(
-        ServerPlaceRecipe.CraftingMenuAccess<?> menuAccess,
+    private static PostPlaceAction commit(
+        RecipeBookMenu menuAccess,
         NearbyCraftingAccess nearbyAccess,
         Inventory inventory,
         List<Slot> gridSlots,
@@ -425,7 +436,7 @@ public final class NearbyRecipePlacementTransaction {
     ) {
         List<Extracted> extracted = new ArrayList<>();
         if (!revalidate(inventory, gridSlots, plan.sources)) {
-            return RecipeBookMenu.PostPlaceAction.NOTHING;
+            return PostPlaceAction.NOTHING;
         }
 
         try {
@@ -457,7 +468,7 @@ public final class NearbyRecipePlacementTransaction {
                 extracted.add(new Extracted(source.storage, source.index, removed.copy()));
             }
 
-            List<ItemStack> livePlayer = inventory.getNonEquipmentItems();
+            List<ItemStack> livePlayer = inventory.items;
             for (Source source : plan.sources) {
                 if (source.kind == SourceKind.GRID && source.remaining > 0) {
                     ItemStack leftover = source.identity.stack().copyWithCount((int) source.remaining);
@@ -471,8 +482,8 @@ public final class NearbyRecipePlacementTransaction {
                 gridSlots.get(target.slotIndex).set(target.identity.stack().copyWithCount(target.amount));
             }
             @SuppressWarnings({"rawtypes", "unchecked"})
-            boolean matches = ((ServerPlaceRecipe.CraftingMenuAccess) menuAccess)
-                .recipeMatches((RecipeHolder) plan.recipeHolder);
+            boolean matches = ((RecipeBookMenu) menuAccess)
+                .recipeMatches((Recipe) plan.recipeHolder);
             if (!matches) {
                 throw new IllegalStateException("Planned exact-component grid does not match the recipe");
             }
@@ -502,18 +513,18 @@ public final class NearbyRecipePlacementTransaction {
                 .distinct()
                 .forEach(NearbyStorage::markChanged);
             inventory.setChanged();
-            return RecipeBookMenu.PostPlaceAction.NOTHING;
+            return PostPlaceAction.NOTHING;
         } catch (RuntimeException failure) {
             rollback(inventory, gridSlots, playerSnapshot, gridSnapshot, extracted);
             LOGGER.warn("Nearby recipe placement changed during commit; restored captured items", failure);
-            return RecipeBookMenu.PostPlaceAction.NOTHING;
+            return PostPlaceAction.NOTHING;
         }
     }
 
     private static boolean revalidate(Inventory inventory, List<Slot> gridSlots, List<Source> sources) {
         for (Source source : sources) {
             if (source.kind == SourceKind.PLAYER) {
-                ItemStack current = inventory.getNonEquipmentItems().get(source.index);
+                ItemStack current = inventory.items.get(source.index);
                 if (!source.identity.matches(current) || current.getCount() != source.originalAmount) {
                     return false;
                 }
@@ -561,13 +572,13 @@ public final class NearbyRecipePlacementTransaction {
             }
         }
         for (int index = 0; index < playerSnapshot.size(); index++) {
-            inventory.getNonEquipmentItems().set(index, playerSnapshot.get(index).copy());
+            inventory.items.set(index, playerSnapshot.get(index).copy());
         }
         for (int index = 0; index < gridSnapshot.size(); index++) {
             gridSlots.get(index).set(gridSnapshot.get(index).copy());
         }
         for (ItemStack remainder : fallback) {
-            inventory.placeItemBackInInventory(remainder, false, net.minecraft.util.Prediction.SERVER_ONLY);
+            inventory.placeItemBackInInventory(remainder, false);
         }
         inventory.setChanged();
     }
@@ -606,8 +617,8 @@ public final class NearbyRecipePlacementTransaction {
         return List.copyOf(sources);
     }
 
-    private static StackedItemContents accountSources(List<Source> sources, int gridSlotCount) {
-        StackedItemContents contents = new StackedItemContents();
+    private static StackedContents accountSources(List<Source> sources, int gridSlotCount) {
+        StackedContents contents = new StackedContents();
         for (Source source : sources) {
             long remaining = Math.min(source.originalAmount, (long) source.identity.stack().getMaxStackSize() * gridSlotCount);
             while (remaining > 0) {
@@ -624,8 +635,8 @@ public final class NearbyRecipePlacementTransaction {
             if (stack.isEmpty()) {
                 return true;
             }
-            if (!target.isEmpty() && ItemStack.isSameItemSameComponents(target, stack)) {
-                int limit = Math.min(target.getMaxStackSize(), inventory.getMaxStackSize(target));
+            if (!target.isEmpty() && ItemStack.isSameItemSameTags(target, stack)) {
+                int limit = Math.min(target.getMaxStackSize(), inventory.getMaxStackSize());
                 int inserted = Math.min(stack.getCount(), Math.max(0, limit - target.getCount()));
                 target.grow(inserted);
                 stack.shrink(inserted);
@@ -633,7 +644,7 @@ public final class NearbyRecipePlacementTransaction {
         }
         for (int index = 0; index < player.size() && !stack.isEmpty(); index++) {
             if (player.get(index).isEmpty()) {
-                int inserted = Math.min(stack.getCount(), Math.min(stack.getMaxStackSize(), inventory.getMaxStackSize(stack)));
+                int inserted = Math.min(stack.getCount(), Math.min(stack.getMaxStackSize(), inventory.getMaxStackSize()));
                 player.set(index, stack.copyWithCount(inserted));
                 stack.shrink(inserted);
             }
@@ -725,9 +736,9 @@ public final class NearbyRecipePlacementTransaction {
     private static final class Plan {
         private final List<Target> targets;
         private final List<Source> sources;
-        private final RecipeHolder<?> recipeHolder;
+        private final Recipe<?> recipeHolder;
 
-        private Plan(List<Target> targets, List<Source> sources, RecipeHolder<?> recipeHolder) {
+        private Plan(List<Target> targets, List<Source> sources, Recipe<?> recipeHolder) {
             this.targets = targets;
             this.sources = sources;
             this.recipeHolder = recipeHolder;
@@ -740,7 +751,7 @@ public final class NearbyRecipePlacementTransaction {
 
         private boolean requiresExactTransaction() {
             return usesNearbyStorage() || targets.stream()
-                .anyMatch(target -> !target.identity.stack().getComponentsPatch().isEmpty());
+                .anyMatch(target -> target.identity.stack().hasTag());
         }
     }
 

@@ -3,16 +3,16 @@ package com.derk.easyinventorycrafter.net;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.network.FriendlyByteBuf;
+import com.derk.easyinventorycrafter.net.PacketCodec;
+import com.derk.easyinventorycrafter.net.CommonPayload;
+import net.minecraft.resources.ResourceLocation;
 import io.github.derkottersberg.seamlesscrafting.SeamlessCraftingMod;
 
-public record NearbyHighlightResponsePacket(List<BlockPos> positions) implements CustomPacketPayload {
+public record NearbyHighlightResponsePacket(List<BlockPos> positions) implements CommonPayload {
     public static final int MAX_POSITIONS = 512;
     public static final Type<NearbyHighlightResponsePacket> TYPE = new Type<>(SeamlessCraftingMod.networkId("nearby_highlight_response"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, NearbyHighlightResponsePacket> STREAM_CODEC = StreamCodec.of((buf, packet) -> packet.write(buf), NearbyHighlightResponsePacket::decode);
+    public static final PacketCodec<FriendlyByteBuf, NearbyHighlightResponsePacket> STREAM_CODEC = PacketCodec.of((buf, packet) -> packet.write(buf), NearbyHighlightResponsePacket::decode);
 
     public NearbyHighlightResponsePacket {
         positions = List.copyOf(positions);
@@ -21,7 +21,7 @@ public record NearbyHighlightResponsePacket(List<BlockPos> positions) implements
         }
     }
 
-    public static NearbyHighlightResponsePacket decode(RegistryFriendlyByteBuf buf) {
+    public static NearbyHighlightResponsePacket decode(FriendlyByteBuf buf) {
         int size = buf.readVarInt();
         if (size < 0 || size > MAX_POSITIONS) {
             throw new IllegalArgumentException("Invalid nearby highlight position count: " + size);
@@ -33,7 +33,7 @@ public record NearbyHighlightResponsePacket(List<BlockPos> positions) implements
         return new NearbyHighlightResponsePacket(positions);
     }
 
-    public void write(RegistryFriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(positions.size());
         for (BlockPos pos : positions) {
             buf.writeBlockPos(pos);

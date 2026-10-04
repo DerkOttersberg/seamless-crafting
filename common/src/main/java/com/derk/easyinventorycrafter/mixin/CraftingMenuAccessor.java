@@ -7,6 +7,9 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(CraftingMenu.class)
 public interface CraftingMenuAccessor {
+    @Accessor("player")
+    net.minecraft.world.entity.player.Player derk$getOwner();
+
     @Accessor("access")
     ContainerLevelAccess derk$getLevelAccess();
 }

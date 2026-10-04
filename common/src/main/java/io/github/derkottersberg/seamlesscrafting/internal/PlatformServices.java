@@ -3,7 +3,7 @@ package io.github.derkottersberg.seamlesscrafting.internal;
 import java.nio.file.Path;
 import com.derk.easyinventorycrafter.NearbyStorage;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.derk.easyinventorycrafter.net.CommonPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -15,7 +15,7 @@ public interface PlatformServices {
 
     Path configDirectory();
 
-    void sendToPlayer(ServerPlayer player, CustomPacketPayload payload);
+    void sendToPlayer(ServerPlayer player, CommonPayload payload);
 
     /** Returns the loader's standard automation-facing item storage, if any. */
     @Nullable

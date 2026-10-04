@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.Container;
-import net.minecraft.world.RandomizableContainer;
+import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -242,7 +242,7 @@ public final class NearbyInventoryScanner {
         ItemStack requested
     ) {
         List<BlockPos> positions = findInventoryPositionsWithItem(level, center, radius, player, requested);
-        return positions.isEmpty() ? null : positions.getFirst();
+        return positions.isEmpty() ? null : positions.get(0);
     }
 
     public static BlockPos canonicalInventoryKey(BlockPos first, @Nullable BlockPos second) {
@@ -257,7 +257,7 @@ public final class NearbyInventoryScanner {
         if (!(state.getBlock() instanceof ChestBlock) || state.getValue(ChestBlock.TYPE) == ChestType.SINGLE) {
             return null;
         }
-        BlockPos connected = ChestBlock.getConnectedBlockPos(pos, state);
+        BlockPos connected = pos.relative(ChestBlock.getConnectedDirection(state));
         if (!level.isLoaded(connected) || !(level.getBlockState(connected).getBlock() instanceof ChestBlock)) {
             return null;
         }
@@ -269,7 +269,7 @@ public final class NearbyInventoryScanner {
     }
 
     private static void unpackLoot(@Nullable BlockEntity blockEntity, Player player) {
-        if (blockEntity instanceof RandomizableContainer randomizable) {
+        if (blockEntity instanceof RandomizableContainerBlockEntity randomizable) {
             randomizable.unpackLootTable(player);
         }
     }

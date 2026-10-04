@@ -9,13 +9,9 @@ import java.util.Locale;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.ItemTags;
@@ -70,7 +66,7 @@ public final class NearbyPanelController {
         return requestedOpen;
     }
 
-    public void render(GuiGraphicsExtractor graphics, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
         if (!layout.expanded()) {
             return;
         }
@@ -85,7 +81,7 @@ public final class NearbyPanelController {
         );
         boolean truncated = NearbyItemsClientState.isTruncated();
         Component header = Component.literal(NearbyPanelPresentation.header(truncated));
-        graphics.text(
+        graphics.drawString(
             font,
             header,
             panelX + 4,
@@ -102,7 +98,7 @@ public final class NearbyPanelController {
             entries.size()
         );
         if (status != NearbyPanelPresentation.Status.CONTENT) {
-            graphics.text(
+            graphics.drawString(
                 font,
                 Component.literal(status.label()),
                 panelX + 5,
@@ -136,23 +132,23 @@ public final class NearbyPanelController {
             int itemX = startX + local % NearbyPanelLayout.COLUMNS * NearbyPanelLayout.SLOT_SIZE + 2;
             int itemY = startY + local / NearbyPanelLayout.COLUMNS * NearbyPanelLayout.SLOT_SIZE + 1;
             NearbyItemEntry entry = entries.get(index);
-            graphics.item(entry.stack(), itemX, itemY);
-            graphics.itemDecorations(font, entry.stack(), itemX, itemY, formatCount(entry.count()));
+            graphics.renderItem(entry.stack(), itemX, itemY);
+            graphics.renderItemDecorations(font, entry.stack(), itemX, itemY, formatCount(entry.count()));
         }
 
         int hovered = hoveredIndex(mouseX, mouseY, entries.size());
         if (hovered >= 0) {
-            graphics.setTooltipForNextFrame(font, entries.get(hovered).stack(), mouseX, mouseY);
+            graphics.renderTooltip(font, entries.get(hovered).stack(), mouseX, mouseY);
         }
         renderClickPulse(graphics, entries.size());
     }
 
-    public boolean handleMouseClick(MouseButtonEvent click) {
-        if (!layout.expanded() || click.button() != 0 || !insidePanel(click.x(), click.y())) {
+    public boolean handleMouseClick(double mouseX, double mouseY, int button) {
+        if (!layout.expanded() || button != 0 || !insidePanel(mouseX, mouseY)) {
             return false;
         }
         List<NearbyItemEntry> entries = filteredEntries();
-        int index = hoveredIndex(click.x(), click.y(), entries.size());
+        int index = hoveredIndex(mouseX, mouseY, entries.size());
         if (index < 0) {
             return false;
         }
@@ -172,16 +168,16 @@ public final class NearbyPanelController {
         return true;
     }
 
-    public boolean handleCharTyped(CharacterEvent input) {
-        if (layout.expanded() && searchField != null && searchField.charTyped(input)) {
+    public boolean handleCharTyped(char codePoint, int modifiers) {
+        if (layout.expanded() && searchField != null && searchField.charTyped(codePoint, modifiers)) {
             scrollOffset = 0;
             return true;
         }
         return false;
     }
 
-    public boolean handleKeyPressed(KeyEvent input) {
-        if (layout.expanded() && searchField != null && searchField.keyPressed(input)) {
+    public boolean handleKeyPressed(int keyCode, int scanCode, int modifiers) {
+        if (layout.expanded() && searchField != null && searchField.keyPressed(keyCode, scanCode, modifiers)) {
             scrollOffset = 0;
             return true;
         }
@@ -258,7 +254,7 @@ public final class NearbyPanelController {
             && mouseY <= layout.panelY() + layout.panelHeight();
     }
 
-    private void renderClickPulse(GuiGraphicsExtractor graphics, int totalEntries) {
+    private void renderClickPulse(GuiGraphics graphics, int totalEntries) {
         if (!EasyInventoryCrafterConfig.isHighlightEnabled() || lastClickIndex < 0 || lastClickIndex >= totalEntries) {
             return;
         }
@@ -294,7 +290,7 @@ public final class NearbyPanelController {
             || stack.is(ItemTags.EMERALD_ORES)) {
             return 1;
         }
-        return stack.has(DataComponents.FOOD) ? 2 : 3;
+        return stack.isEdible() ? 2 : 3;
     }
 
     private static String formatCount(long count) {

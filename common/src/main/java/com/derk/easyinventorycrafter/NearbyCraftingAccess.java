@@ -18,4 +18,8 @@ public interface NearbyCraftingAccess {
     void derk$reconcileNearbyWithdrawals();
 
     void derk$onCraftingSlotsChanged();
+
+    void derk$beginAutofill();
+
+    void derk$endAutofill();
 }

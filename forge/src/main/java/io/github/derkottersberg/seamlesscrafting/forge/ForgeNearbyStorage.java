@@ -56,7 +56,7 @@ final class ForgeNearbyStorage implements NearbyStorage {
         }
         ItemStack second = handler.extractItem(sourceIndex, amount, true);
         if (!isExact(second, expected, amount)
-            || !ItemStack.isSameItemSameComponents(first, second)
+            || !ItemStack.isSameItemSameTags(first, second)
             || !before.matches(captureSnapshot())) {
             return ItemStack.EMPTY;
         }
@@ -190,7 +190,7 @@ final class ForgeNearbyStorage implements NearbyStorage {
 
     private static boolean isUnchanged(ItemStack actual, ItemStack expected) {
         return actual.getCount() == expected.getCount()
-            && (actual.isEmpty() && expected.isEmpty() || ItemStack.isSameItemSameComponents(actual, expected));
+            && (actual.isEmpty() && expected.isEmpty() || ItemStack.isSameItemSameTags(actual, expected));
     }
 
     private static boolean isValidRemainder(ItemStack remainder, ItemStack offered) {
@@ -198,7 +198,7 @@ final class ForgeNearbyStorage implements NearbyStorage {
             return false;
         }
         return remainder.isEmpty()
-            || ItemStack.isSameItemSameComponents(remainder, offered)
+            || ItemStack.isSameItemSameTags(remainder, offered)
             && remainder.getCount() > 0
             && remainder.getCount() <= offered.getCount();
     }

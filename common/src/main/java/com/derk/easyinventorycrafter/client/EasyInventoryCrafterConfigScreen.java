@@ -40,7 +40,7 @@ public final class EasyInventoryCrafterConfigScreen extends SettingsScreen {
         toggleSetting("Container highlights", "Highlight containers", "Outline matching containers in the world when you locate an item from the nearby panel.",
             this.draft.showHighlighter, v -> this.draft.showHighlighter = v);
         actionSetting("Container highlights", "Highlight color", "Choose the color of matching-container highlights. Opens a color picker.",
-            this.color + " / Pick", button -> this.minecraft.setScreenAndShow(new EasyColorPickerScreen(
+            this.color + " / Pick", button -> this.minecraft.setScreen(new EasyColorPickerScreen(
                 this, parsedColorOrDefault(), chosen -> this.color = String.format(Locale.ROOT, "#%06X", chosen))));
         textSetting("Container highlights", "Visible for (seconds)", "0.5-60 seconds. How long a located container stays highlighted.",
             this.duration, v -> this.duration = v);

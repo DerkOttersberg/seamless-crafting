@@ -13,13 +13,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractCraftingMenu;
+import net.minecraft.world.inventory.RecipeBookMenu;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingRecipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -28,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(AbstractCraftingMenu.class)
+@Mixin({CraftingMenu.class, InventoryMenu.class})
 public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess {
     @Unique
     private final List<PendingNearbyWithdrawal> derk$pendingNearbyWithdrawals = new ArrayList<>();
@@ -45,11 +46,18 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
     @Unique
     private boolean derk$autofillingNearbyWithdrawals;
 
-    @Shadow
-    protected abstract Player owner();
+    @Unique
+    private Player owner() {
+        return (Object) this instanceof CraftingMenu
+            ? ((CraftingMenuAccessor) this).derk$getOwner()
+            : ((InventoryMenuAccessor) this).derk$getOwner();
+    }
 
-    @Shadow
-    public abstract List<Slot> getInputGridSlots();
+    @Unique
+    private List<Slot> getInputGridSlots() {
+        RecipeBookMenu<?> menu = (RecipeBookMenu<?>) (Object) this;
+        return menu.slots.subList(1, 1 + menu.getGridWidth() * menu.getGridHeight());
+    }
 
     @Override
     public ContainerLevelAccess derk$getAccess() {
@@ -127,7 +135,7 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
                 }
 
                 ItemStack slotStack = inputSlots.get(slotIndex).getItem();
-                if (slotStack.isEmpty() || !ItemStack.isSameItemSameComponents(slotStack, withdrawal.templateStack())) {
+                if (slotStack.isEmpty() || !ItemStack.isSameItemSameTags(slotStack, withdrawal.templateStack())) {
                     iterator.remove();
                     continue;
                 }
@@ -158,27 +166,13 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
         }
     }
 
-    @Inject(method = "handlePlacement", at = @At("HEAD"))
-    private void derk$markNearbyAutofillStart(
-        boolean useMaxItems,
-        boolean isCreative,
-        RecipeHolder<?> recipe,
-        ServerLevel level,
-        Inventory inventory,
-        CallbackInfoReturnable<?> cir
-    ) {
+    @Override
+    public void derk$beginAutofill() {
         derk$autofillingNearbyWithdrawals = true;
     }
 
-    @Inject(method = "handlePlacement", at = @At("RETURN"))
-    private void derk$finishNearbyAutofill(
-        boolean useMaxItems,
-        boolean isCreative,
-        RecipeHolder<?> recipe,
-        ServerLevel level,
-        Inventory inventory,
-        CallbackInfoReturnable<?> cir
-    ) {
+    @Override
+    public void derk$endAutofill() {
         derk$autofillingNearbyWithdrawals = false;
         derk$reconcileNearbyWithdrawals();
         if (owner() instanceof ServerPlayer serverPlayer) {
@@ -209,7 +203,7 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
 
                     Slot slot = inputSlots.get(slotIndex);
                     ItemStack slotStack = slot.getItem();
-                    if (slotStack.isEmpty() || !ItemStack.isSameItemSameComponents(slotStack, withdrawal.templateStack())) {
+                    if (slotStack.isEmpty() || !ItemStack.isSameItemSameTags(slotStack, withdrawal.templateStack())) {
                         iterator.remove();
                         continue;
                     }
@@ -269,9 +263,9 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
     private void derk$refreshAfterNearbyTransfer() {
         List<Slot> inputSlots = getInputGridSlots();
         if (!inputSlots.isEmpty()) {
-            ((AbstractCraftingMenu) (Object) this).slotsChanged(inputSlots.getFirst().container);
+            ((RecipeBookMenu<?>) (Object) this).slotsChanged(inputSlots.get(0).container);
         }
-        ((AbstractCraftingMenu) (Object) this).broadcastChanges();
+        ((RecipeBookMenu<?>) (Object) this).broadcastChanges();
         if (owner() instanceof ServerPlayer serverPlayer) {
             NearbyItemsSync.sendNearbyItems(serverPlayer);
         }

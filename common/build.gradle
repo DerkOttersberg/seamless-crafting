@@ -1,8 +1,10 @@
-plugins { id 'dev.architectury.loom-no-remap' }
+plugins { id 'dev.architectury.loom' }
 base { archivesName = rootProject.archives_base_name }
 dependencies {
     minecraft libs.minecraft
+    mappings loom.officialMojangMappings()
     compileOnly libs.fabric.loader
+    compileOnly libs.mixin
     testImplementation platform(libs.junit.bom)
     testImplementation libs.junit.jupiter
     testRuntimeOnly libs.junit.platform.launcher

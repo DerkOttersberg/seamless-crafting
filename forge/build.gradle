@@ -1,4 +1,4 @@
-plugins { id 'dev.architectury.loom-no-remap' }
+plugins { id 'dev.architectury.loom' }
 base { archivesName = rootProject.archives_base_name }
 
 sourceSets.main {
@@ -20,16 +20,18 @@ configurations {
     gametestRuntimeOnly.extendsFrom runtimeOnly
 }
 
-configurations.forgeRuntimeLibrary {
-    exclude group: 'dev.architectury', module: 'architectury-naming-service'
-    exclude group: 'dev.architectury', module: 'architectury-mixin-remapper-service'
-}
 
 dependencies {
     minecraft libs.minecraft
+    mappings loom.officialMojangMappings()
+    def seamlessApi = files(rootProject.file("../seamless-api/forge/build/devlibs/seamless-api-${libs.versions.seamless.api.get()}-forge-dev.jar"))
+    seamlessApi.builtBy gradle.includedBuild('seamless-api').task(':forge:jar')
+    implementation seamlessApi
     forge libs.forge
+    compileOnly libs.jei.common.api
 }
 loom {
+    mixin { useLegacyMixinAp = true; defaultRefmapName = 'seamless_crafting.refmap.json' }
     mods {
         seamlesscrafting {
             sourceSet sourceSets.main
@@ -44,11 +46,6 @@ loom {
             forgeTemplate 'gameTestServer'
             source sourceSets.gametest
             runDir 'build/gametest'
-            def identityMappings = rootProject.file('gradle/official-named-empty.tiny').absolutePath
-            property 'architectury.naming.mappingsPath', identityMappings
-            property 'architectury.naming.sourceNamespace', 'official'
-            property 'architectury.mixinRemapper.mappingsPath', identityMappings
-            property 'architectury.mixinRemapper.sourceNamespace', 'official'
             property 'forge.enabledGameTestNamespaces', 'derk_easy_inventory_crafter'
         }
     }
@@ -63,9 +60,9 @@ tasks.named('runGameTestServer') {
         def logText = latestLog.getText('UTF-8')
         def discoveries = (logText =~ /(\d+) tests are now running/).collect { match -> match[1] as int }
         def discoveredCount = discoveries.isEmpty() ? 0 : discoveries.max()
-        if (discoveredCount < 13) {
+        if (discoveredCount < 12) {
             throw new GradleException(
-                "Forge discovered ${discoveredCount} GameTests; expected Minecraft's control plus twelve Seamless Crafting scenarios"
+                "Forge discovered ${discoveredCount} GameTests; expected twelve Seamless Crafting scenarios"
             )
         }
         if (!(logText =~ /All \d+ required tests passed/).find()) {
@@ -76,9 +73,9 @@ tasks.named('runGameTestServer') {
 tasks.named('check') { dependsOn tasks.named('runGameTestServer') }
 def metadataProperties = [
     mod_version: project.version.toString(),
-    loader_version_range: '[66,)',
-    forge_version_range: '[66.0.9,67)',
-    minecraft_version_range: '[26.3,26.4)'
+    loader_version_range: '[47,)',
+    forge_version_range: '[47.1,48)',
+    minecraft_version_range: '[1.20.1,1.20.2)'
 ]
 processResources {
     inputs.properties metadataProperties
@@ -93,9 +90,38 @@ tasks.named('jar', Jar) {
                 'MixinConfigs': 'seamless_crafting.mixins.json'
         )
     }
-    archiveFileName = "${rootProject.archives_base_name}-${project.version}-forge.jar"
+    archiveFileName = "${rootProject.archives_base_name}-${project.version}-forge-dev.jar"
 }
 tasks.named('sourcesJar', Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     archiveFileName = "${rootProject.archives_base_name}-${project.version}-forge-sources.jar"
 }
+
+tasks.named('remapJar') { archiveFileName = "${rootProject.archives_base_name}-${project.version}-forge.jar" }
+
+// Keep the legacy GameTest fixture reproducible without checking in binary NBT.
+def generatedStructures = layout.buildDirectory.dir('generated/gametest-resources')
+tasks.register('generateGameTestStructure') {
+    outputs.dir generatedStructures
+    doLast {
+        def target = generatedStructures.get().file('data/derk_easy_inventory_crafter/structures/empty.nbt').asFile
+        target.parentFile.mkdirs()
+        new DataOutputStream(new java.util.zip.GZIPOutputStream(new FileOutputStream(target))).withCloseable { out ->
+            out.writeByte(10); out.writeUTF('')
+            out.writeByte(3); out.writeUTF('DataVersion'); out.writeInt(3465)
+            out.writeByte(9); out.writeUTF('size'); out.writeByte(3); out.writeInt(3)
+            [16, 4, 16].each { out.writeInt(it) }
+            out.writeByte(9); out.writeUTF('palette'); out.writeByte(10); out.writeInt(1)
+            out.writeByte(8); out.writeUTF('Name'); out.writeUTF('minecraft:air'); out.writeByte(0)
+            ['blocks', 'entities'].each { name ->
+                out.writeByte(9); out.writeUTF(name); out.writeByte(10); out.writeInt(0)
+            }
+            out.writeByte(0)
+        }
+    }
+}
+sourceSets.gametest.resources.srcDir generatedStructures
+tasks.named('processGametestResources') { dependsOn 'generateGameTestStructure' }
+
+
+tasks.named('remapSourcesJar') { archiveFileName = "${rootProject.archives_base_name}-${project.version}-forge-sources.jar" }

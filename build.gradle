@@ -43,6 +43,9 @@ subprojects {
     }
 
     tasks.withType(Test).configureEach { useJUnitPlatform() }
+    tasks.withType(JavaExec).configureEach {
+        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+    }
 
     publishing {
         publications {
@@ -79,19 +82,18 @@ tasks.register('verifyCommonIsolation') {
     }
 }
 
-def loaderJarFiles = ['fabric', 'forge', 'neoforge'].collectEntries { loader ->
-    [(loader): project(":${loader}").tasks.named('jar', Jar).flatMap { it.archiveFile }]
+def loaderJarFiles = ['fabric', 'forge'].collectEntries { loader ->
+    [(loader): providers.provider { project(":${loader}").tasks.named('remapJar').get().archiveFile.get() }]
 }
 
 tasks.register('verifyLoaderJars') {
     group = 'verification'
-    dependsOn ':fabric:jar', ':forge:jar', ':neoforge:jar'
+    dependsOn ':fabric:remapJar', ':forge:remapJar'
     inputs.files(loaderJarFiles.values())
     doLast {
         def specifications = [
             fabric: [expected: 'fabric.mod.json', forbidden: ['META-INF/mods.toml', 'META-INF/neoforge.mods.toml']],
-            forge: [expected: 'META-INF/mods.toml', forbidden: ['fabric.mod.json', 'META-INF/neoforge.mods.toml']],
-            neoforge: [expected: 'META-INF/neoforge.mods.toml', forbidden: ['fabric.mod.json', 'META-INF/mods.toml']]
+            forge: [expected: 'META-INF/mods.toml', forbidden: ['fabric.mod.json', 'META-INF/neoforge.mods.toml']]
         ]
         def exactVersion = rootProject.mod_version.toString()
         def requireEqual = { actual, expected, label ->
@@ -128,6 +130,14 @@ tasks.register('verifyLoaderJars') {
                     throw new GradleException("${archive.name} does not contain the canonical CC0 license text")
                 }
 
+                zip.entries().findAll { it.name.endsWith('.class') }.each { entry ->
+                    zip.getInputStream(entry).withCloseable { stream ->
+                        def data = new DataInputStream(stream)
+                        data.readInt(); data.readUnsignedShort()
+                        def major = data.readUnsignedShort()
+                        if (major > 61) throw new GradleException("${archive.name} contains Java ${major - 44} bytecode: ${entry.name}")
+                    }
+                }
                 def entryNames = []
                 def entries = zip.entries()
                 while (entries.hasMoreElements()) entryNames << entries.nextElement().name
@@ -142,9 +152,9 @@ tasks.register('verifyLoaderJars') {
                 }
 
                 def fabricJeiPlugin = 'io/github/derkottersberg/seamlesscrafting/fabric/SeamlessCraftingFabricJeiPlugin.class'
-                def neoJeiPlugin = 'io/github/derkottersberg/seamlesscrafting/neoforge/SeamlessCraftingNeoForgeJeiPlugin.class'
+                def forgeJeiPlugin = 'io/github/derkottersberg/seamlesscrafting/forge/SeamlessCraftingForgeJeiPlugin.class'
                 requireEqual(entryNames.contains(fabricJeiPlugin), loader == 'fabric', "${archive.name} Fabric JEI plugin presence")
-                requireEqual(entryNames.contains(neoJeiPlugin), loader == 'neoforge', "${archive.name} NeoForge JEI plugin presence")
+                requireEqual(entryNames.contains(forgeJeiPlugin), loader == 'forge', "${archive.name} Forge JEI plugin presence")
 
                 def metadataText = zip.getInputStream(zip.getEntry(specification.expected)).getText('UTF-8')
                 if (metadataText.contains('${')) {
@@ -170,7 +180,7 @@ tasks.register('verifyLoaderJars') {
                     def expectedDependencies = [
                         fabricloader: ">=${libs.versions.fabric.loader.get()}",
                         'fabric-api': ">=${libs.versions.fabric.supported.api.minimum.get()} <${libs.versions.fabric.supported.api.maximum.exclusive.get()}",
-                        minecraft: "~${libs.versions.minecraft.get()}",
+                        minecraft: libs.versions.minecraft.get(),
                         java: ">=${libs.versions.java.get()}"
                     ]
                     expectedDependencies.each { id, range ->
@@ -182,36 +192,18 @@ tasks.register('verifyLoaderJars') {
                 } else if (loader == 'forge') {
                     requireFragments(metadataText, [
                         'modLoader="javafml"',
-                        'loaderVersion="[66,)"',
+                        'loaderVersion="[47,)"',
                         'license="CC0-1.0"',
                         'modId="derk_easy_inventory_crafter"',
                         "version=\"${exactVersion}\"",
                         'displayName="Seamless Crafting"',
                         'modId="forge"',
-                        'versionRange="[66.0.9,67)"',
+                        'versionRange="[47.1,48)"',
                         'modId="minecraft"',
-                        'versionRange="[26.3,26.4)"',
+                        'versionRange="[1.20.1,1.20.2)"',
                         '[features.derk_easy_inventory_crafter]',
-                        'javaVersion="[25,)"'
+                        'javaVersion="[17,)"'
                     ], 'Forge metadata')
-                    if (metadataText.contains('versionRange="*"')) {
-                        throw new GradleException("${archive.name} contains a wildcard dependency range")
-                    }
-                } else {
-                    requireFragments(metadataText, [
-                        'modLoader="javafml"',
-                        'loaderVersion="[1,)"',
-                        'license="CC0-1.0"',
-                        'modId="derk_easy_inventory_crafter"',
-                        "version=\"${exactVersion}\"",
-                        'displayName="Seamless Crafting"',
-                        'modId="neoforge"',
-                        'versionRange="[26.3.0.48-beta,26.4)"',
-                        'modId="minecraft"',
-                        'versionRange="[26.3,26.4)"',
-                        '[features.derk_easy_inventory_crafter]',
-                        'javaVersion="[25,)"'
-                    ], 'NeoForge metadata')
                     if (metadataText.contains('versionRange="*"')) {
                         throw new GradleException("${archive.name} contains a wildcard dependency range")
                     }

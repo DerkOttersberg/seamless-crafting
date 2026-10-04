@@ -1,15 +1,23 @@
-plugins { id 'dev.architectury.loom-no-remap' }
+plugins { id 'dev.architectury.loom' }
 base { archivesName = rootProject.archives_base_name }
 def selectedFabricApiVersion = providers.gradleProperty('fabricApiVersion').orElse(libs.versions.fabric.api)
 dependencies {
     minecraft libs.minecraft
-    implementation libs.fabric.loader
-    implementation "net.fabricmc.fabric-api:fabric-api:${selectedFabricApiVersion.get()}"
-    compileOnly libs.modmenu
+    mappings loom.officialMojangMappings()
+    def seamlessApi = files(rootProject.file("../seamless-api/fabric/build/devlibs/seamless-api-${libs.versions.seamless.api.get()}-fabric-dev.jar"))
+    seamlessApi.builtBy gradle.includedBuild('seamless-api').task(':fabric:jar')
+    implementation seamlessApi
+    modImplementation libs.fabric.loader
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${selectedFabricApiVersion.get()}"
+    modCompileOnly libs.modmenu
     compileOnly libs.jei.common.api
-    implementation project(':common')
 }
-loom { mods { seamless_crafting { sourceSet sourceSets.main; sourceSet project(':common').sourceSets.main } } }
+sourceSets.main.java.srcDir rootProject.file('common/src/main/java')
+sourceSets.main.resources.srcDir rootProject.file('common/src/main/resources')
+loom {
+    mixin { useLegacyMixinAp = true; defaultRefmapName = 'seamless_crafting.refmap.json' }
+    mods { seamless_crafting { sourceSet sourceSets.main } }
+}
 
 fabricApi {
     configureTests {
@@ -24,14 +32,13 @@ fabricApi {
 sourceSets.gametest.java.srcDir rootProject.file('common/src/gametest/java')
 
 dependencies {
-    gametestImplementation project(':common')
 }
 
 def metadataProperties = [
     version: project.version.toString(),
     fabric_loader_range: ">=${libs.versions.fabric.loader.get()}",
     fabric_api_range: ">=${libs.versions.fabric.supported.api.minimum.get()} <${libs.versions.fabric.supported.api.maximum.exclusive.get()}",
-    minecraft_range: "~${libs.versions.minecraft.get()}",
+    minecraft_range: libs.versions.minecraft.get(),
     java_range: ">=${libs.versions.java.get()}"
 ]
 processResources {
@@ -48,9 +55,9 @@ tasks.named('runGameTest') {
         def logText = latestLog.getText('UTF-8')
         def discoveries = (logText =~ /(\d+) tests are now running/).collect { match -> match[1] as int }
         def discoveredCount = discoveries.isEmpty() ? 0 : discoveries.max()
-        if (discoveredCount < 12) {
+        if (discoveredCount < 11) {
             throw new GradleException(
-                "Fabric discovered ${discoveredCount} GameTests; expected Minecraft's control plus eleven Seamless Crafting scenarios"
+                "Fabric discovered ${discoveredCount} GameTests; expected eleven Seamless Crafting scenarios"
             )
         }
         if (!(logText =~ /All \d+ required tests passed/).find()) {
@@ -60,12 +67,40 @@ tasks.named('runGameTest') {
 }
 tasks.named('check') { dependsOn tasks.named('runGameTest') }
 tasks.named('jar', Jar) {
-    from project(':common').sourceSets.main.output
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    archiveFileName = "${rootProject.archives_base_name}-${project.version}-fabric.jar"
+    archiveFileName = "${rootProject.archives_base_name}-${project.version}-fabric-dev.jar"
 }
 tasks.named('sourcesJar', Jar) {
     from project(':common').sourceSets.main.allSource
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     archiveFileName = "${rootProject.archives_base_name}-${project.version}-fabric-sources.jar"
 }
+
+tasks.named('remapJar') { archiveFileName = "${rootProject.archives_base_name}-${project.version}-fabric.jar" }
+
+// Keep the legacy GameTest fixture reproducible without checking in binary NBT.
+def generatedStructures = layout.buildDirectory.dir('generated/gametest-resources')
+tasks.register('generateGameTestStructure') {
+    outputs.dir generatedStructures
+    doLast {
+        def target = generatedStructures.get().file('data/fabric-gametest-api-v1/structures/empty.nbt').asFile
+        target.parentFile.mkdirs()
+        new DataOutputStream(new java.util.zip.GZIPOutputStream(new FileOutputStream(target))).withCloseable { out ->
+            out.writeByte(10); out.writeUTF('')
+            out.writeByte(3); out.writeUTF('DataVersion'); out.writeInt(3465)
+            out.writeByte(9); out.writeUTF('size'); out.writeByte(3); out.writeInt(3)
+            [16, 4, 16].each { out.writeInt(it) }
+            out.writeByte(9); out.writeUTF('palette'); out.writeByte(10); out.writeInt(1)
+            out.writeByte(8); out.writeUTF('Name'); out.writeUTF('minecraft:air'); out.writeByte(0)
+            ['blocks', 'entities'].each { name ->
+                out.writeByte(9); out.writeUTF(name); out.writeByte(10); out.writeInt(0)
+            }
+            out.writeByte(0)
+        }
+    }
+}
+sourceSets.gametest.resources.srcDir generatedStructures
+tasks.named('processGametestResources') { dependsOn 'generateGameTestStructure' }
+
+
+tasks.named('remapSourcesJar') { archiveFileName = "${rootProject.archives_base_name}-${project.version}-fabric-sources.jar" }

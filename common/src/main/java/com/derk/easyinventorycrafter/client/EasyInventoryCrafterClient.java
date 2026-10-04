@@ -12,7 +12,7 @@ public final class EasyInventoryCrafterClient {
     public static void tick(Minecraft client) {
         NearbyItemsClientState.tickHighlight(client);
 
-        if (!(client.gui.screen() instanceof CraftingScreen) && !(client.gui.screen() instanceof InventoryScreen)) {
+        if (!(client.screen instanceof CraftingScreen) && !(client.screen instanceof InventoryScreen)) {
             NearbyItemsClientState.resetAutoRefreshCounter();
             return;
         }

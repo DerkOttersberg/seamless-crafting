@@ -2,9 +2,6 @@ package com.derk.easyinventorycrafter.client;
 
 import java.util.List;
 import java.util.Optional;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 
 public interface NearbyPanelAccess {
     List<PanelBounds> derk$getVisiblePanelBounds();
@@ -15,9 +12,9 @@ public interface NearbyPanelAccess {
 
     boolean derk$handleScroll(double mouseX, double mouseY, double verticalAmount);
 
-    boolean derk$handleCharTyped(CharacterEvent input);
+    boolean derk$handleCharTyped(char codePoint, int modifiers);
 
-    boolean derk$handleKeyPressed(KeyEvent input);
+    boolean derk$handleKeyPressed(int keyCode, int scanCode, int modifiers);
 
-    boolean derk$handleMouseClick(MouseButtonEvent click, boolean doubleClick);
+    boolean derk$handleMouseClick(double mouseX, double mouseY, int button);
 }

@@ -12,17 +12,25 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import com.derk.easyinventorycrafter.net.RequestNearbyItemsPacket;
+import com.derk.easyinventorycrafter.net.NearbyHighlightRequestPacket;
+import com.derk.easyinventorycrafter.net.ReturnNearbyItemsPacket;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.derk.easyinventorycrafter.net.CommonPayload;
 
 public final class SeamlessCraftingFabricClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         SeamlessCraftingClientBootstrap.initialize(new FabricClientPlatformServices());
-        ClientPlayNetworking.registerGlobalReceiver(NearbyItemsPacket.TYPE, (payload, context) ->
-            context.client().execute(() -> EasyInventoryCrafterClientNetwork.handleNearbyItems(payload)));
-        ClientPlayNetworking.registerGlobalReceiver(NearbyHighlightResponsePacket.TYPE, (payload, context) ->
-            context.client().execute(() -> EasyInventoryCrafterClientNetwork.handleHighlightResponse(payload)));
+        ClientPlayNetworking.registerGlobalReceiver(NearbyItemsPacket.TYPE.id(), (client, handler, buffer, response) -> {
+            NearbyItemsPacket payload = NearbyItemsPacket.STREAM_CODEC.decode(buffer);
+            client.execute(() -> EasyInventoryCrafterClientNetwork.handleNearbyItems(payload));
+        });
+        ClientPlayNetworking.registerGlobalReceiver(NearbyHighlightResponsePacket.TYPE.id(), (client, handler, buffer, response) -> {
+            NearbyHighlightResponsePacket payload = NearbyHighlightResponsePacket.STREAM_CODEC.decode(buffer);
+            client.execute(() -> EasyInventoryCrafterClientNetwork.handleHighlightResponse(payload));
+        });
         ClientTickEvents.END_CLIENT_TICK.register(EasyInventoryCrafterClient::tick);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> NearbyItemsClientState.clear());
     }
@@ -39,8 +47,14 @@ public final class SeamlessCraftingFabricClient implements ClientModInitializer 
         }
 
         @Override
-        public void sendToServer(CustomPacketPayload payload) {
-            ClientPlayNetworking.send(payload);
+        public void sendToServer(CommonPayload payload) {
+            if (!ClientPlayNetworking.canSend(payload.type().id())) return;
+            var buffer = PacketByteBufs.create();
+            if (payload instanceof RequestNearbyItemsPacket request) RequestNearbyItemsPacket.STREAM_CODEC.encode(buffer, request);
+            else if (payload instanceof NearbyHighlightRequestPacket highlight) NearbyHighlightRequestPacket.STREAM_CODEC.encode(buffer, highlight);
+            else if (payload instanceof ReturnNearbyItemsPacket returns) ReturnNearbyItemsPacket.STREAM_CODEC.encode(buffer, returns);
+            else throw new IllegalArgumentException("Not a serverbound Seamless Crafting packet");
+            ClientPlayNetworking.send(payload.type().id(), buffer);
         }
     }
 }

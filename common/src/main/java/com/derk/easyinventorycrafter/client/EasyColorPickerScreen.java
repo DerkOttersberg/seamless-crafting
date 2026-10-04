@@ -3,7 +3,7 @@ package com.derk.easyinventorycrafter.client;
 import io.github.derkottersberg.seamlesscrafting.internal.client.SettingsScreen;
 import java.util.Locale;
 import java.util.function.IntConsumer;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -49,11 +49,11 @@ public final class EasyColorPickerScreen extends SettingsScreen {
     protected String summary() { return "Preview: " + this.hex + ". Save the main settings afterward to apply."; }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
         int x = (this.width - Math.min(520, this.width - 24)) / 2 + 30;
         graphics.fill(x, 46, x + 16, 62, 0xFF000000 | this.color);
-        graphics.outline(x, 46, 16, 16, 0xFFFFFFFF);
+        graphics.renderOutline(x, 46, 16, 16, 0xFFFFFFFF);
     }
 
     private static int parseHex(String raw) {

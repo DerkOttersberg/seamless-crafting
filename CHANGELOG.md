@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.1+mc1.20.1
+
+- Backport the current shared gameplay architecture to Minecraft 1.20.1, Java 17,
+  Fabric and Forge. NeoForge is intentionally excluded from this line.
+- Restore remapped loader jars, mixin refmaps, legacy NBT/data formats and bounded
+  networking without changing public compatibility or registry namespaces.
+- Preserve current config migration, UI clarity and item-conservation safeguards.
+- Add optional JEI 15 exclusion/ingredient adapters on both loaders.
+
+
 ## 2.1.1+mc26.3
 
 - Adapt inventory-return prediction and pose rotations; update optional JEI integration. Preserve authoritative crafting, item conservation, nearby/double-chest accounting, menu cleanup, and established mod IDs.

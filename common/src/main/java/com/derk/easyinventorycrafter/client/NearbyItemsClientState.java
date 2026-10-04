@@ -90,8 +90,8 @@ public final class NearbyItemsClientState {
             truncated = payload.truncated();
             receivedPayload = true;
             loading = false;
-            if (client.gui.screen() instanceof RecipeUpdateListener listener) {
-                if (client.gui.screen() instanceof NearbyRecipeBookRefreshAccess access) {
+            if (client.screen instanceof RecipeUpdateListener listener) {
+                if (client.screen instanceof NearbyRecipeBookRefreshAccess access) {
                     access.derk$refreshNearbyRecipeBook();
                 }
                 listener.recipesUpdated();

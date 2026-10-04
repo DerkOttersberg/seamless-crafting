@@ -19,17 +19,26 @@ registration inside the corresponding loader module.
 
 ## Rendering boundary
 
-World highlights are submitted through Minecraft's render-state collector and
-vanilla render pipelines. Do not reintroduce immediate buffers or raw OpenGL:
-the same common renderer must work under OpenGL and Vulkan.
+World highlights use vanilla `RenderType`, `MultiBufferSource`, and the 1.20.1
+`LevelRenderer.renderLevel` hook. Never use raw OpenGL calls. This line has no
+26.x render-state collector or vanilla Vulkan backend.
 
 ## Port checklist
 
 1. Update only `gradle/libs.versions.toml` and the pack format.
 2. Compile and test common accounting/configuration logic.
 3. Adapt mappings and render-state APIs in common without loader imports.
-4. Adapt Fabric, Forge, and NeoForge networking/lifecycle entrypoints.
+4. Adapt Fabric and Forge networking/lifecycle entrypoints.
 5. Run `clean check build` and inspect every loader jar's metadata.
 6. Boot a client and dedicated server for every loader.
 7. Verify item conservation, double-chest deduplication, menu close,
    disconnect, save/reload, and resource reload in copied worlds.
+
+## Legacy build boundary
+
+This branch uses regular `dev.architectury.loom` and official Mojang mappings.
+Compile shared sources into each loader module; do not put a remapped common jar
+on a named development runtime classpath. Both loaders need legacy mixin refmaps.
+Only loader remapped `build/libs` jars are distributable. Java 25 hosts Gradle;
+Java 17 is used for compilation and Minecraft. Keep plural 1.20.1 data directories
+and NBT item persistence; newer data components are not interchangeable.

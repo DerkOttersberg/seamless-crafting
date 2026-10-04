@@ -3,7 +3,7 @@ package io.github.derkottersberg.seamlesscrafting.internal.client;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -51,7 +51,7 @@ public abstract class SettingsScreen extends Screen {
         List<Row> current = null;
         for (Row row : this.rows) {
             if (current == null || current.size() == capacity
-                || !current.getFirst().section.equals(row.section)) {
+                || !current.get(0).section.equals(row.section)) {
                 current = new ArrayList<>();
                 this.pages.add(current);
             }
@@ -63,8 +63,9 @@ public abstract class SettingsScreen extends Screen {
             int controlWidth = Math.min(146, this.contentWidth / 2);
             for (int i = 0; i < visible.size(); i++) {
                 Row row = visible.get(i);
-                row.widget.setRectangle(controlWidth, 20,
-                    this.left + this.contentWidth - controlWidth - 8, 74 + i * ROW_HEIGHT);
+                row.widget.setWidth(controlWidth);
+                row.widget.setX(this.left + this.contentWidth - controlWidth - 8);
+                row.widget.setY(74 + i * ROW_HEIGHT);
                 row.widget.setTooltip(Tooltip.create(Component.literal(row.label + "\n" + row.help)));
                 this.addRenderableWidget(row.widget);
             }
@@ -131,16 +132,16 @@ public abstract class SettingsScreen extends Screen {
     }
 
     @Override
-    public final void onClose() { this.minecraft.setScreenAndShow(this.parent); }
+    public final void onClose() { this.minecraft.setScreen(this.parent); }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, this.width, this.height, 0xF010141C);
         drawFitted(graphics, this.title.getString(), this.width / 2, 12, this.width - 20, 0xFFFFFFFF, true);
         drawFitted(graphics, this.scope, this.width / 2, 28, this.width - 20, 0xFFB3C1D3, true);
         if (!this.pages.isEmpty()) {
             List<Row> visible = this.pages.get(this.page);
-            String heading = visible.getFirst().section + "  (" + (this.page + 1) + "/" + this.pages.size() + ")";
+            String heading = visible.get(0).section + "  (" + (this.page + 1) + "/" + this.pages.size() + ")";
             drawFitted(graphics, heading, this.width / 2, 50, this.contentWidth - 60, 0xFF8FD7CB, true);
             for (int i = 0; i < visible.size(); i++) {
                 Row row = visible.get(i);
@@ -151,8 +152,8 @@ public abstract class SettingsScreen extends Screen {
                 drawFitted(graphics, row.help, this.left + 8, y + 24, this.contentWidth - 16, 0xFFAFBDCF, false);
                 if (mouseX >= this.left && mouseX < this.left + this.contentWidth
                     && mouseY >= y && mouseY < y + 34 && !row.widget.isMouseOver(mouseX, mouseY)) {
-                    graphics.setTooltipForNextFrame(this.font,
-                        Component.literal(row.label + "\n" + row.help), mouseX, mouseY);
+                    graphics.renderTooltip(this.font,
+                        this.font.split(Component.literal(row.label + "\n" + row.help), Math.min(280, this.width - 32)), mouseX, mouseY);
                 }
             }
         }
@@ -161,16 +162,16 @@ public abstract class SettingsScreen extends Screen {
         var lines = this.font.split(Component.literal(footer), this.contentWidth);
         int y = this.height - 52;
         for (int i = 0; i < Math.min(2, lines.size()); i++) {
-            graphics.centeredText(this.font, lines.get(i), this.width / 2, y + i * 10, color);
+            graphics.drawCenteredString(this.font, lines.get(i), this.width / 2, y + i * 10, color);
         }
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        super.render(graphics, mouseX, mouseY, partialTick);
     }
 
-    private void drawFitted(GuiGraphicsExtractor graphics, String text, int x, int y, int maxWidth, int color, boolean centered) {
+    private void drawFitted(GuiGraphics graphics, String text, int x, int y, int maxWidth, int color, boolean centered) {
         String visible = this.font.width(text) <= maxWidth ? text
             : this.font.plainSubstrByWidth(text, Math.max(0, maxWidth - this.font.width("..."))) + "...";
-        if (centered) graphics.centeredText(this.font, visible, x, y, color);
-        else graphics.text(this.font, visible, x, y, color, false);
+        if (centered) graphics.drawCenteredString(this.font, visible, x, y, color);
+        else graphics.drawString(this.font, visible, x, y, color, false);
     }
 
     protected static int integer(String raw, int min, int max, String label) {

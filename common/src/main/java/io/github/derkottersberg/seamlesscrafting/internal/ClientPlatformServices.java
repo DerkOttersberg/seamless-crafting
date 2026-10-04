@@ -1,12 +1,12 @@
 package io.github.derkottersberg.seamlesscrafting.internal;
 
 import java.nio.file.Path;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.derk.easyinventorycrafter.net.CommonPayload;
 
 public interface ClientPlatformServices {
     String loaderName();
 
     Path configDirectory();
 
-    void sendToServer(CustomPacketPayload payload);
+    void sendToServer(CommonPayload payload);
 }

@@ -12,16 +12,12 @@ import com.derk.easyinventorycrafter.net.EasyInventoryCrafterNetwork;
 import com.derk.easyinventorycrafter.net.ReturnNearbyItemsPacket;
 import java.util.List;
 import java.util.Optional;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
-import net.minecraft.client.gui.screens.recipebook.CraftingRecipeBookComponent;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.CraftingMenu;
@@ -32,7 +28,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(CraftingScreen.class)
-public abstract class CraftingScreenMixin extends AbstractRecipeBookScreen<CraftingMenu> implements NearbyPanelAccess {
+public abstract class CraftingScreenMixin extends AbstractContainerScreen<CraftingMenu> implements NearbyPanelAccess {
     @Unique
     private final NearbyPanelController derk$nearbyPanel = new NearbyPanelController();
     @Unique
@@ -43,7 +39,7 @@ public abstract class CraftingScreenMixin extends AbstractRecipeBookScreen<Craft
     private EditBox derk$searchField;
 
     protected CraftingScreenMixin(CraftingMenu menu, Inventory inventory, Component title) {
-        super(menu, new CraftingRecipeBookComponent(menu), inventory, title);
+        super(menu, inventory, title);
     }
 
     @Inject(method = "init", at = @At("TAIL"))
@@ -69,13 +65,16 @@ public abstract class CraftingScreenMixin extends AbstractRecipeBookScreen<Craft
         NearbyItemsClientState.requestUpdate();
     }
 
-    @Inject(method = "extractBackground", at = @At("TAIL"))
-    private void derk$drawNearbyPanel(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+    @Inject(method = "render", at = @At("TAIL"))
+    private void derk$drawNearbyPanel(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         NearbyPanelLayout layout = derk$updateLayout();
-        derk$nearbyButton.setPosition(layout.buttonX(), layout.buttonY());
-        derk$cancelButton.setPosition(layout.buttonX() + 64, layout.buttonY());
-        derk$searchField.setPosition(layout.buttonX(), layout.searchY());
-        derk$searchField.setVisible(layout.expanded());
+        derk$nearbyButton.setX(layout.buttonX());
+        derk$nearbyButton.setY(layout.buttonY());
+        derk$cancelButton.setX(layout.buttonX() + 64);
+        derk$cancelButton.setY(layout.buttonY());
+        derk$searchField.setX(layout.buttonX());
+        derk$searchField.setY(layout.searchY());
+        derk$searchField.visible = layout.expanded();
         derk$nearbyPanel.render(graphics, this.font, mouseX, mouseY);
     }
 
@@ -117,21 +116,21 @@ public abstract class CraftingScreenMixin extends AbstractRecipeBookScreen<Craft
     }
 
     @Override
-    public boolean derk$handleCharTyped(CharacterEvent input) {
+    public boolean derk$handleCharTyped(char codePoint, int modifiers) {
         derk$updateLayout();
-        return derk$nearbyPanel.handleCharTyped(input);
+        return derk$nearbyPanel.handleCharTyped(codePoint, modifiers);
     }
 
     @Override
-    public boolean derk$handleKeyPressed(KeyEvent input) {
+    public boolean derk$handleKeyPressed(int keyCode, int scanCode, int modifiers) {
         derk$updateLayout();
-        return derk$nearbyPanel.handleKeyPressed(input);
+        return derk$nearbyPanel.handleKeyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
-    public boolean derk$handleMouseClick(MouseButtonEvent click, boolean doubleClick) {
+    public boolean derk$handleMouseClick(double mouseX, double mouseY, int button) {
         derk$updateLayout();
-        if (derk$nearbyPanel.handleMouseClick(click)) {
+        if (derk$nearbyPanel.handleMouseClick(mouseX, mouseY, button)) {
             this.onClose();
             return true;
         }

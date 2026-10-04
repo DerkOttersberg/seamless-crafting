@@ -70,7 +70,7 @@ public final class ContainerNearbyStorage implements NearbyStorage {
         return expected.matches(current)
             && current.getCount() >= amount
             && container.canPlaceItem(sourceIndex, current)
-            && current.getCount() <= Math.min(current.getMaxStackSize(), container.getMaxStackSize(current));
+            && current.getCount() <= Math.min(current.getMaxStackSize(), container.getMaxStackSize());
     }
 
     @Override
@@ -113,10 +113,10 @@ public final class ContainerNearbyStorage implements NearbyStorage {
             return;
         }
         ItemStack target = container.getItem(slot);
-        if (!target.isEmpty() && !ItemStack.isSameItemSameComponents(target, stack)) {
+        if (!target.isEmpty() && !ItemStack.isSameItemSameTags(target, stack)) {
             return;
         }
-        int limit = Math.min(stack.getMaxStackSize(), container.getMaxStackSize(stack));
+        int limit = Math.min(stack.getMaxStackSize(), container.getMaxStackSize());
         if (target.isEmpty()) {
             int inserted = Math.min(limit, stack.getCount());
             if (inserted > 0) {

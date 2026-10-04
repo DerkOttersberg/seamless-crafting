@@ -12,9 +12,6 @@ displayURL="https://github.com/DerkOttersberg/seamless-crafting"
 authors="Derk Ottersberg"
 description='''Craft directly from nearby containers with recipe-book support, item-safe returns, and container highlighting.'''
 
-[[mixins]]
-config="seamless_crafting.mixins.json"
-
 [[dependencies.derk_easy_inventory_crafter]]
 modId="forge"
 mandatory=true
@@ -30,4 +27,4 @@ ordering="NONE"
 side="BOTH"
 
 [features.derk_easy_inventory_crafter]
-javaVersion="[25,)"
+javaVersion="[17,)"

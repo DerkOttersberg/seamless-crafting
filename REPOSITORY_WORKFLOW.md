@@ -1,38 +1,36 @@
 # Repository workflow
 
-This is one multi-loader project: `common`, `fabric`, `forge`, and `neoforge`.
-Each Minecraft version branch contains all three loaders.
+Each Minecraft version has one branch containing its supported loader modules.
+`1.20.1` contains `common`, `fabric`, and `forge`; NeoForge is deliberately
+excluded from this backport. `26.2` and `26.3` retain their own three-loader
+projects. `main` is unchanged.
 
-## Version branches
-
-- `26.2`: the preserved Minecraft 26.2 release-hardening source line.
-- `26.3`: the separately ported Minecraft 26.3 source line.
-- `main` is left unchanged by this version-branch migration.
-- Use short-lived `feat/<name>` and `fix/<name>` branches based on the
-  relevant version branch. Do not create permanent per-loader branches.
-- Keep published tags and releases. Never force-push or delete a version line
-  as a substitute for a proper port or an explicit retirement decision.
+Use `feat/<name>` and `fix/<name>` based on the relevant version branch; do not
+create permanent loader branches, force-push, or delete published version lines.
 
 ## Updating safely
 
-Save your own uncommitted work first, then run:
+Save your own uncommitted work first:
 
 ```bash
 git fetch origin
-git switch 26.3
+git switch 1.20.1
 git pull --ff-only
 ```
 
-For Minecraft 26.2, switch to `26.2` instead. Do not mix 26.2 and 26.3 sources,
-runtime jars, or API sibling checkouts. Dependents using a composite build need
-the matching Minecraft version of `seamless-api` in the sibling directory.
-The API's `suite-lock.json` pins exact suite commits.
+Use the matching `1.20.1` checkout of `seamless-api` as a sibling for dependent
+composite builds. The suite manifest must pin commits from this game line.
 
-Build with Java 25 and `./gradlew clean check build`. Game/toolchain versions
-live in `gradle/libs.versions.toml`; a new Minecraft version requires code and
-runtime verification, not merely broader metadata. CI status must be checked
-separately from local acceptance; an unavailable or blocked CI run is not a pass.
+Gradle 9.6 runs on Java 25. Compilation, tests, GameTests, and Minecraft use the
+Java 17 toolchain (automatically resolved by Foojay). Run
+`./gradlew clean check build`; do not attempt to run Gradle 9.6 on Java 17.
+Versions live in `gradle/libs.versions.toml`.
 
-Publish only verified loader-specific runtime jars. Never distribute QA helpers,
-Minecraft libraries, test worlds, or development profiles. Keep existing licensing
-and compatibility/registry IDs unchanged.
+Publish only canonical remapped jars from loader `build/libs`, never
+`build/devlibs`, common jars, QA helpers, Minecraft libraries, or test worlds.
+Preserve licenses, public API packages, registry IDs, and legacy config backups.
+A newer game's world cannot be safely downgraded merely by using matching mod IDs.
+
+Tests launch clients only in a private Linux Xvfb display with bounded resources.
+Do not use the historical 26.x desktop launchers for 1.20.1 QA.
+Remote CI status is separate from local test evidence: unavailable CI is not a pass.
