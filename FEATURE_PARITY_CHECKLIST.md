@@ -50,5 +50,5 @@
 - [x] NeoForge 26.2 client reaches title screen
 - [x] Fabric, Forge, and NeoForge combined dedicated-server boots
 - [x] In-world nearby item withdrawal and cancellation conservation
-- [ ] Disconnect/reconnect and menu-close conservation matrix
-- [x] Combined four-mod OpenGL and Vulkan profiles
+- [x] Real two-client disconnect/reconnect and inventory/table close conservation on all three loaders
+- [x] Combined five-mod OpenGL and Vulkan profiles (NeoForge Vulkan requires `earlyWindowControl = false`)
