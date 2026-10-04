@@ -23,7 +23,7 @@ for this branch; see those version branches for their reports.
 - [x] No QA classes, shaded Seamless API or bundled JEI classes in release jars
 - [x] Real isolated clients with JEI: nearby synchronization, autofill and exact NBT return
 - [x] Untouched production jars load in combined dedicated servers and survive restart
-- [ ] Final combined real-client acceptance evidence recorded in suite report
+- [x] Final combined real-client checks on Fabric and Forge (see API suite QA report)
 - [ ] Remote GitHub CI independently passes (account billing lock is not a pass)
 - [ ] Native packaged Forge-launcher client acceptance
 - [ ] Two-client multiplayer disconnect/reconnect acceptance for this backport
