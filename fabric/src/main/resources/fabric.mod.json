@@ -4,7 +4,9 @@
   "version": "${version}",
   "name": "Seamless Crafting",
   "description": "Craft directly from nearby containers with recipe-book support, item-safe returns, and container highlighting.",
-  "authors": ["Derk Ottersberg"],
+  "authors": [
+    "Derk Ottersberg"
+  ],
   "contact": {
     "sources": "https://github.com/DerkOttersberg/seamless-crafting",
     "issues": "https://github.com/DerkOttersberg/seamless-crafting/issues"
@@ -12,12 +14,22 @@
   "license": "CC0-1.0",
   "environment": "*",
   "entrypoints": {
-    "main": ["io.github.derkottersberg.seamlesscrafting.fabric.SeamlessCraftingFabric"],
-    "client": ["io.github.derkottersberg.seamlesscrafting.fabric.SeamlessCraftingFabricClient"],
-    "modmenu": ["io.github.derkottersberg.seamlesscrafting.fabric.SeamlessCraftingModMenuIntegration"],
-    "jei_mod_plugin": ["io.github.derkottersberg.seamlesscrafting.fabric.SeamlessCraftingFabricJeiPlugin"]
+    "main": [
+      "io.github.derkottersberg.seamlesscrafting.fabric.SeamlessCraftingFabric"
+    ],
+    "client": [
+      "io.github.derkottersberg.seamlesscrafting.fabric.SeamlessCraftingFabricClient"
+    ],
+    "modmenu": [
+      "io.github.derkottersberg.seamlesscrafting.fabric.SeamlessCraftingModMenuIntegration"
+    ],
+    "jei_mod_plugin": [
+      "io.github.derkottersberg.seamlesscrafting.fabric.SeamlessCraftingFabricJeiPlugin"
+    ]
   },
-  "mixins": ["seamless_crafting.mixins.json"],
+  "mixins": [
+    "seamless_crafting.mixins.json"
+  ],
   "depends": {
     "fabricloader": "${fabric_loader_range}",
     "fabric-api": "${fabric_api_range}",
@@ -26,5 +38,6 @@
   },
   "suggests": {
     "modmenu": ">=20.0.3"
-  }
+  },
+  "icon": "assets/seamless_crafting/icon.png"
 }

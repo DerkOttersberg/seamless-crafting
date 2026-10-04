@@ -2,6 +2,14 @@
 
 ## 2.1.0+mc26.2
 
+- Added a dedicated Mods-menu icon on all loaders.
+- Reorganized settings into nearby items, container highlights, and locate
+  effects with responsive pages, visible ARGB labels, units, limits, and help.
+- Preserved unsaved edits across the color picker, page changes, and resizing;
+  rejected non-finite numbers before applying any configuration changes.
+- Reworked the color picker with a hex field, named RGB sliders, and preview.
+- Preserved existing Fabric/NeoForge JEI exclusion and ingredient integration;
+  verified the live exclusions with open/collapsed panels and the recipe book.
 - Preserved complete item components, including enchantments and custom data,
   in nearby counts, tooltips, highlighting, recipe placement, and rollback.
 - Added whole-grid, prevalidated exact-stack autofill with bounded component
