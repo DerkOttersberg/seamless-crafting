@@ -1,5 +1,8 @@
 # Seamless Crafting
 
+This is the `26.2` source branch. For Minecraft 26.3, use the `26.3` branch;
+each contains Fabric, Forge, and NeoForge. See [REPOSITORY_WORKFLOW.md](REPOSITORY_WORKFLOW.md).
+
 Seamless Crafting lets the crafting table and player inventory use items from
 nearby containers. Its recipe-book integration remains server-authoritative,
 returns withdrawn items when crafting is cancelled, and can locate/highlight
