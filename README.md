@@ -51,3 +51,11 @@ seamless-crafting-2.0.0+mc26.2-neoforge.jar
 See [PORTING.md](PORTING.md) for version-port boundaries and
 [FEATURE_PARITY_CHECKLIST.md](FEATURE_PARITY_CHECKLIST.md) for current
 verification coverage.
+
+## License
+
+**All Rights Reserved** for new original material owned by Derk Ottersberg.
+See [LICENSE.txt](LICENSE.txt) and [licensing history](LICENSES/README.md) for prior-license and third-party exceptions.
+
+Public source may be viewed and forked on GitHub. Issues and pull requests are welcome;
+write access to this repository is reserved for the owner.
