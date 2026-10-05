@@ -6,7 +6,7 @@ import net.minecraft.recipebook.ServerPlaceRecipe;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.RecipeBookMenu;
-import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,10 +17,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ServerPlaceRecipe.class)
 public abstract class ServerPlaceRecipeMixin {
     @Shadow protected Inventory inventory;
-    @Shadow protected RecipeBookMenu<?> menu;
+    @Shadow protected RecipeBookMenu<?, ?> menu;
 
     @Inject(method = "recipeClicked", at = @At("HEAD"), cancellable = true)
-    private void derk$placeNearbyRecipeAtomically(ServerPlayer player, Recipe<?> recipe,
+    private void derk$placeNearbyRecipeAtomically(ServerPlayer player, RecipeHolder<?> recipe,
                                                 boolean useMaxItems, CallbackInfo ci) {
         if (!(menu instanceof NearbyCraftingAccess) || player.containerMenu != menu) {
             return;

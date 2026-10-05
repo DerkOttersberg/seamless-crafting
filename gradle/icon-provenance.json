@@ -1,0 +1,12 @@
+{
+  "fabricId": "seamless_crafting",
+  "fmlId": "derk_easy_inventory_crafter",
+  "license": "CC0-1.0",
+  "commonClass": "com/derk/easyinventorycrafter/EasyInventoryCrafterConfig.class",
+  "asset": "assets/seamless_crafting/icon.png",
+  "sha256": "CE32B2B3430C7FD0FC7C3D8BAB282FFE75E495FDBEB153BDECCFBB69D09772D3",
+  "curseforgeProjectId": 1438872,
+  "projectPage": "https://www.curseforge.com/minecraft/mc-mods/seamless-crafting",
+  "source": "https://media.forgecdn.net/avatars/1727/891/639099484159803614.png",
+  "retrievedDate": "2026-10-05"
+}

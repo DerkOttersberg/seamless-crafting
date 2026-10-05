@@ -13,7 +13,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-/** 1.20.1 has two recipe-book screens, without a shared recipe-book superclass. */
+/** 1.21.1 has two recipe-book screens, without a shared recipe-book superclass. */
 @Mixin({CraftingScreen.class, InventoryScreen.class})
 public abstract class AbstractRecipeBookScreenMixin extends AbstractContainerScreen<AbstractContainerMenu>
         implements NearbyRecipeBookRefreshAccess {
@@ -38,9 +38,9 @@ public abstract class AbstractRecipeBookScreenMixin extends AbstractContainerScr
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double amount) {
         if ((Object) this instanceof NearbyPanelAccess access && access.derk$handleScroll(mouseX, mouseY, amount)) return true;
-        return super.mouseScrolled(mouseX, mouseY, amount);
+        return super.mouseScrolled(mouseX, mouseY, horizontal, amount);
     }
 
     @Override

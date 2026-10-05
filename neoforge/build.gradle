@@ -1,0 +1,101 @@
+plugins { id 'dev.architectury.loom' }
+base { archivesName = rootProject.archives_base_name }
+
+sourceSets.main {
+    java.srcDir rootProject.file('common/src/main/java')
+    resources.srcDir rootProject.file('common/src/main/resources')
+}
+
+sourceSets {
+    gametest {
+        java.srcDirs = ['src/gametest/java', rootProject.file('common/src/gametest/java')]
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    gametestImplementation.extendsFrom implementation
+    gametestRuntimeOnly.extendsFrom runtimeOnly
+}
+
+dependencies {
+    minecraft libs.minecraft
+    mappings loom.officialMojangMappings()
+    neoForge libs.neoforge
+    compileOnly libs.jei.common.api
+}
+def gameTestModRoot = layout.buildDirectory.dir('gametest-mod')
+loom {
+    mods {
+        seamlesscrafting {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.gametest
+        }
+    }
+    runs {
+        gameTestServer {
+            runtimeEnvironment = 'gametestserver'
+            forgeTemplate 'gameTestServer'
+            source sourceSets.gametest
+            environmentVariable 'MOD_CLASSES', "derk_easy_inventory_crafter%%${gameTestModRoot.get().asFile.absolutePath}"
+            runDir 'build/gametest'
+            property 'neoforge.enabledGameTestNamespaces', 'derk_easy_inventory_crafter'
+        }
+    }
+}
+
+tasks.named('runGameTestServer') {
+    doLast {
+        def latestLog = file('build/gametest/logs/latest.log')
+        if (!latestLog.isFile()) {
+            throw new GradleException("NeoForge GameTest did not create ${latestLog}")
+        }
+        def logText = latestLog.getText('UTF-8')
+        def discoveries = (logText =~ /(\d+) tests are now running/).collect { match -> match[1] as int }
+        def discoveredCount = discoveries.isEmpty() ? 0 : discoveries.max()
+        if (discoveredCount < 12) {
+            throw new GradleException(
+                "NeoForge discovered ${discoveredCount} GameTests; expected twelve Seamless Crafting scenarios"
+            )
+        }
+        if (!(logText =~ /All \d+ required tests passed/).find()) {
+            throw new GradleException('NeoForge GameTest log does not contain a successful required-test summary')
+        }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('runGameTestServer') }
+def metadataProperties = [
+    mod_version: project.version.toString(),
+    neo_version_range: '[21.1.255,21.2)',
+    minecraft_version_range: '[1.21.1]'
+]
+processResources {
+    inputs.properties metadataProperties
+    filesMatching('META-INF/neoforge.mods.toml') { expand metadataProperties }
+}
+tasks.named('jar', Jar) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveFileName = "${rootProject.archives_base_name}-${project.version}-neoforge-dev.jar"
+}
+tasks.named('sourcesJar', Jar) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveFileName = "${rootProject.archives_base_name}-${project.version}-neoforge-sources.jar"
+}
+
+ tasks.named('remapJar') { archiveFileName = "${rootProject.archives_base_name}-${project.version}-neoforge.jar" }
+tasks.named('remapSourcesJar') { archiveFileName = "${rootProject.archives_base_name}-${project.version}-neoforge-sources.jar" }
+
+apply from: rootProject.file('gradle/empty-gametest-structure.gradle')
+def stageGameTestMod = tasks.register('stageGameTestMod', Sync) {
+    dependsOn tasks.named('classes'), tasks.named('gametestClasses')
+    from sourceSets.main.output
+    from sourceSets.gametest.output
+    into gameTestModRoot
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+tasks.named('runGameTestServer') {
+    dependsOn stageGameTestMod
+    def sourceRoots = (sourceSets.main.output.files + sourceSets.gametest.output.files) as Set
+    classpath = files(gameTestModRoot) + classpath.filter { !sourceRoots.contains(it) }
+}

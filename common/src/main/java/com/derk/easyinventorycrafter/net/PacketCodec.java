@@ -5,7 +5,7 @@ import java.util.function.Function;
 import net.minecraft.network.FriendlyByteBuf;
 
 /** Explicit buffer codec; does not expose any loader-owned networking type. */
-public interface PacketCodec<B extends FriendlyByteBuf, T> {
+public interface PacketCodec<B extends FriendlyByteBuf, T> extends net.minecraft.network.codec.StreamCodec<B, T> {
     void encode(B buffer, T value);
     T decode(B buffer);
     static <B extends FriendlyByteBuf, T> PacketCodec<B, T> of(BiConsumer<B, T> encoder, Function<B, T> decoder) {

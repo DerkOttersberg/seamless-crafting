@@ -73,9 +73,9 @@ tasks.named('runGameTestServer') {
 tasks.named('check') { dependsOn tasks.named('runGameTestServer') }
 def metadataProperties = [
     mod_version: project.version.toString(),
-    loader_version_range: '[47,)',
-    forge_version_range: '[47.1,48)',
-    minecraft_version_range: '[1.20.1,1.20.2)'
+    loader_version_range: '[52,)',
+    forge_version_range: '[52.1.16,53)',
+    minecraft_version_range: '[1.21.1]'
 ]
 processResources {
     inputs.properties metadataProperties
@@ -104,11 +104,11 @@ def generatedStructures = layout.buildDirectory.dir('generated/gametest-resource
 tasks.register('generateGameTestStructure') {
     outputs.dir generatedStructures
     doLast {
-        def target = generatedStructures.get().file('data/derk_easy_inventory_crafter/structures/empty.nbt').asFile
+        def target = generatedStructures.get().file('data/derk_easy_inventory_crafter/structure/empty.nbt').asFile
         target.parentFile.mkdirs()
         new DataOutputStream(new java.util.zip.GZIPOutputStream(new FileOutputStream(target))).withCloseable { out ->
             out.writeByte(10); out.writeUTF('')
-            out.writeByte(3); out.writeUTF('DataVersion'); out.writeInt(3465)
+            out.writeByte(3); out.writeUTF('DataVersion'); out.writeInt(3955)
             out.writeByte(9); out.writeUTF('size'); out.writeByte(3); out.writeInt(3)
             [16, 4, 16].each { out.writeInt(it) }
             out.writeByte(9); out.writeUTF('palette'); out.writeByte(10); out.writeInt(1)

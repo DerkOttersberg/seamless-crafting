@@ -84,11 +84,11 @@ def generatedStructures = layout.buildDirectory.dir('generated/gametest-resource
 tasks.register('generateGameTestStructure') {
     outputs.dir generatedStructures
     doLast {
-        def target = generatedStructures.get().file('data/fabric-gametest-api-v1/structures/empty.nbt').asFile
+        def target = generatedStructures.get().file('data/fabric-gametest-api-v1/structure/empty.nbt').asFile
         target.parentFile.mkdirs()
         new DataOutputStream(new java.util.zip.GZIPOutputStream(new FileOutputStream(target))).withCloseable { out ->
             out.writeByte(10); out.writeUTF('')
-            out.writeByte(3); out.writeUTF('DataVersion'); out.writeInt(3465)
+            out.writeByte(3); out.writeUTF('DataVersion'); out.writeInt(3955)
             out.writeByte(9); out.writeUTF('size'); out.writeByte(3); out.writeInt(3)
             [16, 4, 16].each { out.writeInt(it) }
             out.writeByte(9); out.writeUTF('palette'); out.writeByte(10); out.writeInt(1)

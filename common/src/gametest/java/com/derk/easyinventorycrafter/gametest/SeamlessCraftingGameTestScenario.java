@@ -17,7 +17,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.recipebook.ServerPlaceRecipe;
@@ -98,7 +100,7 @@ public final class SeamlessCraftingGameTestScenario {
         BarrelBlockEntity barrel = (BarrelBlockEntity) helper.getBlockEntity(BARREL_POS);
         ItemStack enchantedPlanks = new ItemStack(Items.OAK_PLANKS, 4);
         enchantedPlanks.enchant(
-            Enchantments.UNBREAKING,
+            helper.getLevel().registryAccess().registryOrThrow(Registries.ENCHANTMENT).getHolderOrThrow(Enchantments.UNBREAKING),
             1
         );
         barrel.setItem(0, enchantedPlanks.copy());
@@ -108,9 +110,9 @@ public final class SeamlessCraftingGameTestScenario {
         helper.assertTrue(player.inventoryMenu instanceof NearbyCraftingAccess, "The crafting mixin was not applied");
         helper.assertTrue(java.util.Objects.equals(player.getInventory().items.stream().mapToInt(ItemStack::getCount).sum(), 0), "The mock player's saved inventory leaked into the scenario");
         helper.assertTrue(java.util.Objects.equals(countGridItems(player), 0), "The mock player's crafting grid was not reset");
-        Recipe<?> craftingTableRecipe = helper.getLevel().getRecipeManager().getRecipes().stream()
-            .filter(recipe -> recipe.getId().getNamespace().equals("minecraft"))
-            .filter(recipe -> recipe.getId().getPath().equals("crafting_table"))
+        RecipeHolder<?> craftingTableRecipe = helper.getLevel().getRecipeManager().getRecipes().stream()
+            .filter(recipe -> recipe.id().getNamespace().equals("minecraft"))
+            .filter(recipe -> recipe.id().getPath().equals("crafting_table"))
             .findFirst()
             .orElseThrow(() -> new net.minecraft.gametest.framework.GameTestAssertException("The live crafting-table recipe was not loaded"));
 
@@ -131,7 +133,7 @@ public final class SeamlessCraftingGameTestScenario {
             player.inventoryMenu.slots.subList(1, 5).stream()
                 .map(slot -> slot.getItem())
                 .filter(stack -> !stack.isEmpty())
-                .allMatch(stack -> ItemStack.isSameItemSameTags(stack, enchantedPlanks)),
+                .allMatch(stack -> ItemStack.isSameItemSameComponents(stack, enchantedPlanks)),
             "Enchantment components were changed while filling the recipe grid"
         );
 
@@ -139,7 +141,7 @@ public final class SeamlessCraftingGameTestScenario {
 
         helper.assertTrue(java.util.Objects.equals(barrel.getItem(0).getCount(), 4), "Cancelled ingredients were not returned to their source");
         helper.assertTrue(
-            ItemStack.isSameItemSameTags(barrel.getItem(0), enchantedPlanks),
+            ItemStack.isSameItemSameComponents(barrel.getItem(0), enchantedPlanks),
             "Enchantment components were changed during rollback"
         );
         helper.assertTrue(java.util.Objects.equals(countGridItems(player), 0), "Cancelled ingredients remained in the crafting grid");
@@ -162,7 +164,7 @@ public final class SeamlessCraftingGameTestScenario {
         helper.assertTrue(
             player.inventoryMenu.slots.subList(1, 5).stream()
                 .map(slot -> slot.getItem())
-                .allMatch(stack -> stack.getCount() == 3 && ItemStack.isSameItemSameTags(stack, enchantedPlanks)),
+                .allMatch(stack -> stack.getCount() == 3 && ItemStack.isSameItemSameComponents(stack, enchantedPlanks)),
             "Maximum placement changed counts or exact components"
         );
         helper.assertTrue(barrel.getItem(0).isEmpty(), "Maximum placement did not withdraw all planned items");
@@ -171,7 +173,7 @@ public final class SeamlessCraftingGameTestScenario {
         ((NearbyCraftingAccess) player.inventoryMenu).derk$prepareNearbyWithdrawalsForAutofill();
         helper.assertTrue(java.util.Objects.equals(barrel.getItem(0).getCount(), 12), "Maximum placement cancellation did not restore storage");
         helper.assertTrue(
-            ItemStack.isSameItemSameTags(barrel.getItem(0), enchantedPlanks),
+            ItemStack.isSameItemSameComponents(barrel.getItem(0), enchantedPlanks),
             "Maximum placement cancellation changed components"
         );
         helper.assertTrue(java.util.Objects.equals(countGridItems(player), 0), "Maximum placement cancellation left grid items");
@@ -186,8 +188,8 @@ public final class SeamlessCraftingGameTestScenario {
         CommitRaceStorage first = new CommitRaceStorage(BlockPos.ZERO, exactPlanks, 2, false);
         CommitRaceStorage second = new CommitRaceStorage(new BlockPos(1, 0, 0), exactPlanks, 2, true);
         @SuppressWarnings("unchecked")
-        CraftingRecipe recipe = (CraftingRecipe) (Recipe<?>) craftingTableRecipe(helper);
-        RecipeBookMenu<?> menuAccess = player.inventoryMenu;
+        RecipeHolder<?> recipe = craftingTableRecipe(helper);
+        RecipeBookMenu<?, ?> menuAccess = player.inventoryMenu;
 
         NearbyRecipePlacementTransaction.PostPlaceAction action = NearbyRecipePlacementTransaction.tryPlaceWithStoragesForTesting(
             menuAccess,
@@ -244,7 +246,7 @@ public final class SeamlessCraftingGameTestScenario {
         helper.assertTrue(java.util.Objects.equals(barrel.getItem(0).getCount(), 4), "Locked-container rejection changed stored items");
 
         ItemStack key = new ItemStack(Items.DIAMOND);
-        key.setHoverName(Component.literal("QA diamond key"));
+        key.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("QA diamond key"));
         player.setItemInHand(InteractionHand.MAIN_HAND, key);
         List<NearbyInventoryScanner.NearbyInventory> unlocked = NearbyInventoryScanner.scan(
             helper.getLevel(), player.blockPosition(), 4, player
@@ -290,12 +292,12 @@ public final class SeamlessCraftingGameTestScenario {
 
         Player player = makePlayerNearStorage(helper);
         player.containerMenu = player.inventoryMenu;
-        Recipe<?> recipe = craftingTableRecipe(helper);
+        RecipeHolder<?> recipe = craftingTableRecipe(helper);
         placeRecipe(player, false, recipe);
 
         helper.assertTrue(java.util.Objects.equals(barrel.getItem(0).getCount(), 3), "An incomplete plan partially mutated nearby storage");
         helper.assertTrue(
-            ItemStack.isSameItemSameTags(barrel.getItem(0), enchantedPlanks),
+            ItemStack.isSameItemSameComponents(barrel.getItem(0), enchantedPlanks),
             "An incomplete plan changed source components"
         );
         helper.assertTrue(java.util.Objects.equals(countGridItems(player), 0), "An incomplete plan partially mutated the crafting grid");
@@ -314,8 +316,8 @@ public final class SeamlessCraftingGameTestScenario {
 
         Player player = makePlayerNearStorage(helper);
         player.containerMenu = player.inventoryMenu;
-        Recipe<?> loaded = craftingTableRecipe(helper);
-        CraftingRecipe exactRecipe = constrainedRecipe(
+        RecipeHolder<?> loaded = craftingTableRecipe(helper);
+        RecipeHolder<?> exactRecipe = constrainedRecipe(
             loaded,
             input -> gridItems(input).stream().filter(stack -> !stack.isEmpty()).allMatch(ItemStack::isEnchanted)
         );
@@ -324,7 +326,7 @@ public final class SeamlessCraftingGameTestScenario {
 
         helper.assertTrue(java.util.Objects.equals(barrel.getItem(0).getCount(), 4), "The preferred plain variant was mutated before validation");
         helper.assertTrue(
-            ItemStack.isSameItemSameTags(barrel.getItem(0), plainPlanks),
+            ItemStack.isSameItemSameComponents(barrel.getItem(0), plainPlanks),
             "The rejected component variant changed"
         );
         helper.assertTrue(barrel.getItem(1).isEmpty(), "The validated enchanted variant was not withdrawn");
@@ -332,7 +334,7 @@ public final class SeamlessCraftingGameTestScenario {
             player.inventoryMenu.slots.subList(1, 5).stream()
                 .map(slot -> slot.getItem())
                 .filter(stack -> !stack.isEmpty())
-                .allMatch(stack -> ItemStack.isSameItemSameTags(stack, enchantedPlanks)),
+                .allMatch(stack -> ItemStack.isSameItemSameComponents(stack, enchantedPlanks)),
             "The planner did not retry the exact component variant selected by the recipe matcher"
         );
 
@@ -340,7 +342,7 @@ public final class SeamlessCraftingGameTestScenario {
         helper.assertTrue(java.util.Objects.equals(barrel.getItem(0).getCount(), 4), "Rollback changed the rejected plain variant");
         helper.assertTrue(java.util.Objects.equals(barrel.getItem(1).getCount(), 4), "Rollback did not restore the selected enchanted variant");
         helper.assertTrue(
-            ItemStack.isSameItemSameTags(barrel.getItem(1), enchantedPlanks),
+            ItemStack.isSameItemSameComponents(barrel.getItem(1), enchantedPlanks),
             "Rollback changed the selected variant's components"
         );
         helper.assertTrue(java.util.Objects.equals(countStorageAndGrid(barrel, player), 8), "Variant backtracking violated conservation");
@@ -353,7 +355,7 @@ public final class SeamlessCraftingGameTestScenario {
             player.inventoryMenu.slots.subList(1, 5).stream()
                 .map(slot -> slot.getItem())
                 .filter(stack -> !stack.isEmpty())
-                .allMatch(stack -> ItemStack.isSameItemSameTags(stack, enchantedPlanks)),
+                .allMatch(stack -> ItemStack.isSameItemSameComponents(stack, enchantedPlanks)),
             "Player-only autofill changed enchantment components"
         );
         helper.assertTrue(java.util.Objects.equals(player.getInventory().items.stream().mapToInt(ItemStack::getCount).sum() + countGridItems(player), 4), "Player-only exact placement violated conservation");
@@ -364,14 +366,14 @@ public final class SeamlessCraftingGameTestScenario {
         BarrelBlockEntity priorityBarrel = (BarrelBlockEntity) helper.getBlockEntity(BARREL_POS);
         ItemStack storageVariant = enchantedPlanks.copy();
         ItemStack playerPreferredVariant = enchantedPlanks.copy();
-        playerPreferredVariant.setHoverName(Component.literal("zz-player-variant"));
+        playerPreferredVariant.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("zz-player-variant"));
         priorityBarrel.setItem(0, storageVariant.copy());
         player.getInventory().items.set(0, playerPreferredVariant.copy());
 
         placeRecipe(player, false, exactRecipe);
         helper.assertTrue(java.util.Objects.equals(priorityBarrel.getItem(0).getCount(), 4), "A storage-only modified identity was consumed before the player variant");
         helper.assertTrue(
-            ItemStack.isSameItemSameTags(priorityBarrel.getItem(0), storageVariant),
+            ItemStack.isSameItemSameComponents(priorityBarrel.getItem(0), storageVariant),
             "Source-priority planning changed the untouched storage variant"
         );
         helper.assertTrue(java.util.Objects.equals(player.getInventory().items.stream().mapToInt(ItemStack::getCount).sum(), 0), "Source-priority planning did not consume the player variant");
@@ -379,7 +381,7 @@ public final class SeamlessCraftingGameTestScenario {
             player.inventoryMenu.slots.subList(1, 5).stream()
                 .map(slot -> slot.getItem())
                 .filter(stack -> !stack.isEmpty())
-                .allMatch(stack -> ItemStack.isSameItemSameTags(stack, playerPreferredVariant)),
+                .allMatch(stack -> ItemStack.isSameItemSameComponents(stack, playerPreferredVariant)),
             "Source-priority planning selected a naturally earlier storage identity"
         );
         helper.assertTrue(java.util.Objects.equals(countStorageAndGrid(priorityBarrel, player), 8), "Player-before-storage identity selection violated conservation");
@@ -389,12 +391,12 @@ public final class SeamlessCraftingGameTestScenario {
         ItemStack oakCandidate = enchantedPlanks(helper, 4);
         ItemStack birchCandidate = new ItemStack(Items.BIRCH_PLANKS, 4);
         birchCandidate.enchant(
-            Enchantments.UNBREAKING,
+            helper.getLevel().registryAccess().registryOrThrow(Registries.ENCHANTMENT).getHolderOrThrow(Enchantments.UNBREAKING),
             1
         );
         priorityBarrel.setItem(0, oakCandidate.copy());
         priorityBarrel.setItem(1, birchCandidate.copy());
-        CraftingRecipe birchOnlyRecipe = constrainedRecipe(
+        RecipeHolder<?> birchOnlyRecipe = constrainedRecipe(
             loaded,
             input -> gridItems(input).stream()
                 .filter(stack -> !stack.isEmpty())
@@ -407,7 +409,7 @@ public final class SeamlessCraftingGameTestScenario {
             player.inventoryMenu.slots.subList(1, 5).stream()
                 .map(slot -> slot.getItem())
                 .filter(stack -> !stack.isEmpty())
-                .allMatch(stack -> ItemStack.isSameItemSameTags(stack, birchCandidate)),
+                .allMatch(stack -> ItemStack.isSameItemSameComponents(stack, birchCandidate)),
             "Whole-grid planning did not backtrack across ingredient item choices"
         );
         ((NearbyCraftingAccess) player.inventoryMenu).derk$prepareNearbyWithdrawalsForAutofill();
@@ -427,7 +429,7 @@ public final class SeamlessCraftingGameTestScenario {
         helper.assertTrue(!first.equals(StackIdentity.of(plain)), "Stack identity ignored enchantment components");
 
         ItemStack named = plain.copy();
-        named.setHoverName(Component.literal("deterministic"));
+        named.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("deterministic"));
         List<StackIdentity> encounterOrder = List.of(StackIdentity.of(named), StackIdentity.of(plain), first);
         List<StackIdentity> accountedOrder = List.copyOf(NearbyInventoryAccounting.totalCounts(List.of(List.of(
             new NearbyInventoryAccounting.Counted<>(encounterOrder.get(0), 1),
@@ -437,11 +439,11 @@ public final class SeamlessCraftingGameTestScenario {
         ))).keySet());
         helper.assertTrue(java.util.Objects.equals(accountedOrder, encounterOrder), "Exact accounting lost stable source encounter order");
         ItemStack firstInsertionOrder = new ItemStack(Items.WOODEN_SWORD);
-        firstInsertionOrder.setHoverName(Component.literal("ordered"));
+        firstInsertionOrder.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("ordered"));
         firstInsertionOrder.setDamageValue(1);
         ItemStack secondInsertionOrder = new ItemStack(Items.WOODEN_SWORD);
         secondInsertionOrder.setDamageValue(1);
-        secondInsertionOrder.setHoverName(Component.literal("ordered"));
+        secondInsertionOrder.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("ordered"));
         StackIdentity firstOrdered = StackIdentity.of(firstInsertionOrder);
         StackIdentity secondOrdered = StackIdentity.of(secondInsertionOrder);
         helper.assertTrue(firstOrdered.equals(secondOrdered), "Component insertion order changed exact identity");
@@ -453,21 +455,21 @@ public final class SeamlessCraftingGameTestScenario {
             List.of(enchanted),
             true
         );
-        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        RegistryFriendlyByteBuf buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), helper.getLevel().registryAccess());
         NearbyItemsPacket.STREAM_CODEC.encode(buffer, packet);
         NearbyItemsPacket decoded = NearbyItemsPacket.STREAM_CODEC.decode(buffer);
         buffer.release();
         helper.assertTrue(java.util.Objects.equals(decoded.entries().get(0).count(), largeCount), "The VarLong count did not round-trip");
         helper.assertTrue(decoded.truncated(), "The packet truncation flag did not round-trip");
         helper.assertTrue(
-            ItemStack.isSameItemSameTags(decoded.entries().get(0).stack(), enchanted),
+            ItemStack.isSameItemSameComponents(decoded.entries().get(0).stack(), enchanted),
             "Packet encoding changed item components"
         );
 
         List<NearbyStorage.SlotSnapshot> excessive = new ArrayList<>();
         for (int index = 0; index <= NearbyInventoryScanner.MAX_ENTRIES; index++) {
             ItemStack unique = new ItemStack(Items.STONE);
-            unique.setHoverName(Component.literal("bounded-" + index));
+            unique.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("bounded-" + index));
             long amount = index == 0 ? NearbyInventoryScanner.MAX_REPORTED_COUNT + 1 : 1;
             excessive.add(new NearbyStorage.SlotSnapshot(index, unique, amount));
         }
@@ -589,43 +591,41 @@ public final class SeamlessCraftingGameTestScenario {
     private static ItemStack enchantedPlanks(GameTestHelper helper, int count) {
         ItemStack stack = new ItemStack(Items.OAK_PLANKS, count);
         stack.enchant(
-            Enchantments.UNBREAKING,
+            helper.getLevel().registryAccess().registryOrThrow(Registries.ENCHANTMENT).getHolderOrThrow(Enchantments.UNBREAKING),
             1
         );
         return stack;
     }
 
-    private static Recipe<?> craftingTableRecipe(GameTestHelper helper) {
+    private static RecipeHolder<?> craftingTableRecipe(GameTestHelper helper) {
         return helper.getLevel().getRecipeManager().getRecipes().stream()
-            .filter(recipe -> recipe.getId().getNamespace().equals("minecraft"))
-            .filter(recipe -> recipe.getId().getPath().equals("crafting_table"))
+            .filter(recipe -> recipe.id().getNamespace().equals("minecraft"))
+            .filter(recipe -> recipe.id().getPath().equals("crafting_table"))
             .findFirst()
             .orElseThrow(() -> new net.minecraft.gametest.framework.GameTestAssertException("The live crafting-table recipe was not loaded"));
     }
 
-    private static CraftingRecipe constrainedRecipe(Recipe<?> loaded, Predicate<CraftingContainer> constraint) {
-        CraftingRecipe delegate = (CraftingRecipe) loaded;
-        return new CraftingRecipe() {
-            @Override public boolean matches(CraftingContainer input, Level level) { return delegate.matches(input, level) && constraint.test(input); }
-            @Override public ItemStack assemble(CraftingContainer input, RegistryAccess access) { return delegate.assemble(input, access); }
+    private static RecipeHolder<?> constrainedRecipe(RecipeHolder<?> loaded, Predicate<CraftingInput> constraint) {
+        CraftingRecipe delegate = (CraftingRecipe) loaded.value();
+        return new RecipeHolder<>(loaded.id(), new CraftingRecipe() {
+            @Override public boolean matches(CraftingInput input, Level level) { return delegate.matches(input, level) && constraint.test(input); }
+            @Override public ItemStack assemble(CraftingInput input, net.minecraft.core.HolderLookup.Provider access) { return delegate.assemble(input, access); }
             @Override public boolean canCraftInDimensions(int width, int height) { return delegate.canCraftInDimensions(width, height); }
-            @Override public ItemStack getResultItem(RegistryAccess access) { return delegate.getResultItem(access); }
-            @Override public ResourceLocation getId() { return delegate.getId(); }
-            @Override public NonNullList<Ingredient> getIngredients() { return delegate.getIngredients(); }
+            @Override public ItemStack getResultItem(net.minecraft.core.HolderLookup.Provider access) { return delegate.getResultItem(access); }            @Override public NonNullList<Ingredient> getIngredients() { return delegate.getIngredients(); }
             @Override public RecipeSerializer<?> getSerializer() { return delegate.getSerializer(); }
             @Override public String getGroup() { return delegate.getGroup(); }
             @Override public CraftingBookCategory category() { return delegate.category(); }
-        };
+        });
     }
 
-    private static void placeRecipe(Player player, boolean useMaxItems, Recipe<?> recipe) {
+    private static void placeRecipe(Player player, boolean useMaxItems, RecipeHolder<?> recipe) {
         ServerPlayer serverPlayer = (ServerPlayer) player;
         serverPlayer.awardRecipes(List.of(recipe));
         player.inventoryMenu.handlePlacement(useMaxItems, recipe, serverPlayer);
     }
 
-    public static List<ItemStack> gridItems(CraftingContainer input) {
-        return java.util.stream.IntStream.range(0, input.getContainerSize()).mapToObj(input::getItem).toList();
+    public static List<ItemStack> gridItems(CraftingInput input) {
+        return input.items();
     }
 
     private static void useIsolatedScanRadius() {
@@ -744,7 +744,7 @@ public final class SeamlessCraftingGameTestScenario {
 
         @Override
         public int insertExact(int preferredIndex, ItemStack stack) {
-            if (stack == null || stack.isEmpty() || !ItemStack.isSameItemSameTags(stack, template)) {
+            if (stack == null || stack.isEmpty() || !ItemStack.isSameItemSameComponents(stack, template)) {
                 return 0;
             }
             int inserted = stack.getCount();

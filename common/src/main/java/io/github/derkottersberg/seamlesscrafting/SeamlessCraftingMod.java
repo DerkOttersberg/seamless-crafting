@@ -41,10 +41,10 @@ public final class SeamlessCraftingMod {
     }
 
     public static ResourceLocation id(String path) {
-        return new ResourceLocation(CANONICAL_ID, path);
+        return ResourceLocation.fromNamespaceAndPath(CANONICAL_ID, path);
     }
 
     public static ResourceLocation networkId(String path) {
-        return new ResourceLocation(NETWORK_ID, path);
+        return ResourceLocation.fromNamespaceAndPath(NETWORK_ID, path);
     }
 }

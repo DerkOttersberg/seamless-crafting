@@ -44,7 +44,7 @@ subprojects {
 
     tasks.withType(Test).configureEach { useJUnitPlatform() }
     tasks.withType(JavaExec).configureEach {
-        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(libs.versions.java.get().toInteger()) }
     }
 
     publishing {
@@ -135,7 +135,7 @@ tasks.register('verifyLoaderJars') {
                         def data = new DataInputStream(stream)
                         data.readInt(); data.readUnsignedShort()
                         def major = data.readUnsignedShort()
-                        if (major > 61) throw new GradleException("${archive.name} contains Java ${major - 44} bytecode: ${entry.name}")
+                        if (major > 65) throw new GradleException("${archive.name} contains Java ${major - 44} bytecode: ${entry.name}")
                     }
                 }
                 def entryNames = []
@@ -195,17 +195,17 @@ tasks.register('verifyLoaderJars') {
                 } else if (loader == 'forge') {
                     requireFragments(metadataText, [
                         'modLoader="javafml"',
-                        'loaderVersion="[47,)"',
+                        'loaderVersion="[52,)"',
                         'license="CC0-1.0"',
                         'modId="derk_easy_inventory_crafter"',
                         "version=\"${exactVersion}\"",
                         'displayName="Seamless Crafting"',
                         'modId="forge"',
-                        'versionRange="[47.1,48)"',
+                        'versionRange="[52.1.16,53)"',
                         'modId="minecraft"',
-                        'versionRange="[1.20.1,1.20.2)"',
+                        'versionRange="[1.21.1]"',
                         '[features.derk_easy_inventory_crafter]',
-                        'javaVersion="[17,)"'
+                        'javaVersion="[21,)"'
                     ], 'Forge metadata')
                     if (metadataText.contains('versionRange="*"')) {
                         throw new GradleException("${archive.name} contains a wildcard dependency range")
@@ -222,3 +222,5 @@ tasks.named('check') {
     dependsOn tasks.named('verifyLoaderJars')
     dependsOn subprojects.collect { it.tasks.named('check') }
 }
+
+apply from: rootProject.file('gradle/verify-mc1211-artifacts.gradle')

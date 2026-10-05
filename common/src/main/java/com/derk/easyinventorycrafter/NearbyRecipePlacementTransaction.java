@@ -22,6 +22,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +48,10 @@ public final class NearbyRecipePlacementTransaction {
         int gridHeight,
         List<Slot> inputGridSlots,
         Inventory inventory,
-        Recipe<?> recipe,
+        RecipeHolder<?> recipe,
         boolean useMaxItems
     ) {
-        if (!(inventory.player.containerMenu instanceof RecipeBookMenu<?> craftingMenu)
+        if (!(inventory.player.containerMenu instanceof RecipeBookMenu<?, ?> craftingMenu)
             || !(craftingMenu instanceof NearbyCraftingAccess nearbyAccess)) {
             return null;
         }
@@ -92,11 +93,11 @@ public final class NearbyRecipePlacementTransaction {
         int gridHeight,
         List<Slot> inputGridSlots,
         Inventory inventory,
-        Recipe<?> recipe,
+        RecipeHolder<?> recipe,
         boolean useMaxItems,
         List<NearbyStorage> storages
     ) {
-        if (!(inventory.player.containerMenu instanceof RecipeBookMenu<?> craftingMenu)
+        if (!(inventory.player.containerMenu instanceof RecipeBookMenu<?, ?> craftingMenu)
             || !(craftingMenu instanceof NearbyCraftingAccess nearbyAccess)) {
             return null;
         }
@@ -121,7 +122,7 @@ public final class NearbyRecipePlacementTransaction {
         int gridHeight,
         List<Slot> inputGridSlots,
         Inventory inventory,
-        Recipe<?> recipe,
+        RecipeHolder<?> recipe,
         boolean useMaxItems,
         NearbyCraftingAccess nearbyAccess,
         List<NearbyStorage> storages
@@ -130,7 +131,7 @@ public final class NearbyRecipePlacementTransaction {
         List<ItemStack> gridSnapshot = inputGridSlots.stream().map(slot -> slot.getItem().copy()).toList();
         List<Source> sources = snapshotSources(playerSnapshot, gridSnapshot, storages);
         StackedContents combined = accountSources(sources, inputGridSlots.size());
-        if (!combined.canCraft(recipe, null)) {
+        if (!combined.canCraft(recipe.value(), null)) {
             return null;
         }
 
@@ -144,7 +145,7 @@ public final class NearbyRecipePlacementTransaction {
         int minimumAmount = useMaxItems ? 1 : requestedAmount;
         for (int amount = requestedAmount; amount >= minimumAmount; amount--) {
             IntArrayList chosenItems = new IntArrayList();
-            if (!combined.canCraft(recipe, chosenItems, amount)) {
+            if (!combined.canCraft(recipe.value(), chosenItems, amount)) {
                 continue;
             }
             amount = clampToDefaultStackSize(amount, chosenItems);
@@ -152,7 +153,7 @@ public final class NearbyRecipePlacementTransaction {
                 return null;
             }
             chosenItems.clear();
-            if (!combined.canCraft(recipe, chosenItems, amount)) {
+            if (!combined.canCraft(recipe.value(), chosenItems, amount)) {
                 continue;
             }
 
@@ -213,7 +214,7 @@ public final class NearbyRecipePlacementTransaction {
 
     @Nullable
     private static Plan buildPlan(
-        Recipe<?> recipeHolder,
+        RecipeHolder<?> recipeHolder,
         int gridWidth,
         int gridHeight,
         List<Slot> inputGridSlots,
@@ -222,23 +223,22 @@ public final class NearbyRecipePlacementTransaction {
         int amount,
         Inventory inventory
     ) {
-        Recipe<?> recipe = recipeHolder;
+        Recipe<?> recipe = recipeHolder.value();
         List<Ingredient> ingredients = recipe.getIngredients();
         List<Source> sources = originalSources.stream().map(Source::copyForPlan).toList();
         List<Target> targets = new ArrayList<>();
-        // Use vanilla's 1.20.1 centering rules. Result is menu slot 0;
+        // Use vanilla's 1.21.1 centering rules. Result is menu slot 0;
         // transaction target indices exclude that result slot.
         new PlaceRecipe<Ingredient>() {
             @Override
-            public void addItemToSlot(java.util.Iterator<Ingredient> values, int menuSlot,
+            public void addItemToSlot(Ingredient ingredient, int menuSlot,
                                       int count, int y, int x) {
-                Ingredient ingredient = values.next();
                 int targetSlot = menuSlot - 1;
                 if (!ingredient.isEmpty() && targetSlot >= 0 && targetSlot < inputGridSlots.size()) {
                     targets.add(new Target(targetSlot, ingredient, count));
                 }
             }
-        }.placeRecipe(gridWidth, gridHeight, 0, recipe, ingredients.iterator(), amount);
+        }.placeRecipe(gridWidth, gridHeight, 0, recipeHolder, ingredients.iterator(), amount);
         targets.sort(Comparator.comparingInt(Target::slotIndex));
         if (targets.isEmpty()) {
             return null;
@@ -268,7 +268,7 @@ public final class NearbyRecipePlacementTransaction {
         List<Source> sources,
         List<ItemStack> playerSnapshot,
         Inventory inventory,
-        Recipe<?> recipe,
+        RecipeHolder<?> recipe,
         int gridWidth,
         int gridHeight,
         SearchBudget budget
@@ -343,7 +343,7 @@ public final class NearbyRecipePlacementTransaction {
             .map(identity -> identityCandidate(identity, target.slotIndex, sources))
             .sorted(Comparator
                 .comparing((IdentityCandidate candidate) -> !candidate.identity.equals(existingIdentity))
-                .thenComparing(candidate -> candidate.identity.stack().hasTag())
+                .thenComparing(candidate -> candidate.identity.stack().getComponentsPatch().isEmpty() == false)
                 .thenComparingInt(candidate -> candidate.sourcePriority)
                 .thenComparingInt(candidate -> candidate.sourceOrder))
             .map(candidate -> candidate.identity)
@@ -366,7 +366,7 @@ public final class NearbyRecipePlacementTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static boolean matchesPlannedGrid(
-        Recipe<?> recipe,
+        RecipeHolder<?> recipe,
         int gridWidth,
         int gridHeight,
         List<Target> targets,
@@ -387,7 +387,7 @@ public final class NearbyRecipePlacementTransaction {
         for (int i = 0; i < simulatedGrid.size(); i++) {
             input.setItem(i, simulatedGrid.get(i));
         }
-        return ((Recipe) recipe).matches(input, inventory.player.level());
+        return ((Recipe) recipe.value()).matches(input.asCraftInput(), inventory.player.level());
     }
 
     private static long available(StackIdentity identity, List<Source> sources) {
@@ -483,7 +483,7 @@ public final class NearbyRecipePlacementTransaction {
             }
             @SuppressWarnings({"rawtypes", "unchecked"})
             boolean matches = ((RecipeBookMenu) menuAccess)
-                .recipeMatches((Recipe) plan.recipeHolder);
+                .recipeMatches((RecipeHolder) plan.recipeHolder);
             if (!matches) {
                 throw new IllegalStateException("Planned exact-component grid does not match the recipe");
             }
@@ -635,7 +635,7 @@ public final class NearbyRecipePlacementTransaction {
             if (stack.isEmpty()) {
                 return true;
             }
-            if (!target.isEmpty() && ItemStack.isSameItemSameTags(target, stack)) {
+            if (!target.isEmpty() && ItemStack.isSameItemSameComponents(target, stack)) {
                 int limit = Math.min(target.getMaxStackSize(), inventory.getMaxStackSize());
                 int inserted = Math.min(stack.getCount(), Math.max(0, limit - target.getCount()));
                 target.grow(inserted);
@@ -736,9 +736,9 @@ public final class NearbyRecipePlacementTransaction {
     private static final class Plan {
         private final List<Target> targets;
         private final List<Source> sources;
-        private final Recipe<?> recipeHolder;
+        private final RecipeHolder<?> recipeHolder;
 
-        private Plan(List<Target> targets, List<Source> sources, Recipe<?> recipeHolder) {
+        private Plan(List<Target> targets, List<Source> sources, RecipeHolder<?> recipeHolder) {
             this.targets = targets;
             this.sources = sources;
             this.recipeHolder = recipeHolder;
@@ -751,7 +751,7 @@ public final class NearbyRecipePlacementTransaction {
 
         private boolean requiresExactTransaction() {
             return usesNearbyStorage() || targets.stream()
-                .anyMatch(target -> target.identity.stack().hasTag());
+                .anyMatch(target -> target.identity.stack().getComponentsPatch().isEmpty() == false);
         }
     }
 

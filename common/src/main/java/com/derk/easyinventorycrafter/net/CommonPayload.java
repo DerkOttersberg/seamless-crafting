@@ -1,9 +1,4 @@
 package com.derk.easyinventorycrafter.net;
 
-import net.minecraft.resources.ResourceLocation;
-
-/** Loader-neutral message identity for the 1.20.1 networking adapters. */
-public interface CommonPayload {
-    record Type<T extends CommonPayload>(ResourceLocation id) {}
-    Type<? extends CommonPayload> type();
-}
+/** Loader-neutral 1.21.1 payload; identity is owned by vanilla, not a loader. */
+public interface CommonPayload extends net.minecraft.network.protocol.common.custom.CustomPacketPayload {}

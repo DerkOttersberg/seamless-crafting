@@ -29,7 +29,7 @@ public final class FabricNearbyStorageScenario {
     public static void verifiesStandardStorageAdapter(GameTestHelper helper) {
         ItemStack enchanted = new ItemStack(Items.OAK_PLANKS, 4);
         enchanted.enchant(
-            Enchantments.UNBREAKING,
+            helper.getLevel().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT).getHolderOrThrow(Enchantments.UNBREAKING),
             1
         );
         SimpleContainer container = new SimpleContainer(2);
@@ -47,11 +47,11 @@ public final class FabricNearbyStorageScenario {
         helper.assertTrue(java.util.Objects.equals(container.getItem(0).getCount(), 4), "A rejected Fabric extraction mutated storage");
         ItemStack removed = storage.extractExact(source.sourceIndex(), StackIdentity.of(enchanted), 4);
         helper.assertTrue(java.util.Objects.equals(removed.getCount(), 4), "Fabric storage did not extract the planned amount");
-        helper.assertTrue(ItemStack.isSameItemSameTags(removed, enchanted), "Fabric extraction changed components");
+        helper.assertTrue(ItemStack.isSameItemSameComponents(removed, enchanted), "Fabric extraction changed components");
         container.setItem(0, new ItemStack(Items.STONE, 64));
         helper.assertTrue(java.util.Objects.equals(storage.insertExact(0, removed), 4), "Fabric rollback did not fall back to another slot");
         helper.assertTrue(removed.isEmpty(), "Fabric rollback reported insertion without consuming its input");
-        helper.assertTrue(ItemStack.isSameItemSameTags(container.getItem(1), enchanted), "Fabric rollback changed components");
+        helper.assertTrue(ItemStack.isSameItemSameComponents(container.getItem(1), enchanted), "Fabric rollback changed components");
         helper.assertTrue(java.util.Objects.equals(container.getItem(1).getCount(), 4), "Fabric extraction/rollback violated conservation");
 
         SimpleContainer aggregateContainer = new SimpleContainer(3);
@@ -87,7 +87,7 @@ public final class FabricNearbyStorageScenario {
         );
         capabilityOnly.items.setItem(0, enchanted.copy());
         helper.getLevel().setBlockEntity(capabilityOnly);
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.getInventory().clearContent();
         BlockPos playerPos = helper.absolutePos(new BlockPos(1, 1, 3));
         player.setPos(playerPos.getX() + 0.5D, playerPos.getY(), playerPos.getZ() + 0.5D);

@@ -1,20 +1,22 @@
 [versions]
-minecraft = "1.20.1"
-seamless-api = "2.0.2+mc1.20.1"
-java = "17"
+minecraft = "1.21.1"
+seamless-api = "2.0.2+mc1.21.1"
+java = "21"
 architectury-plugin = "3.5.169"
 architectury-loom = "1.17.493"
 fabric-loader = "0.19.5"
-fabric-api = "0.92.12+1.20.1"
-modmenu = "7.2.2"
-fabric-supported-api-minimum = "0.92.12"
-fabric-supported-api-maximum-exclusive = "0.93.0"
-forge = "1.20.1-47.4.26"
+fabric-api = "0.116.17+1.21.1"
+modmenu = "11.0.5"
+fabric-supported-api-minimum = "0.116.17"
+fabric-supported-api-maximum-exclusive = "0.117.0"
+forge = "1.21.1-52.1.16"
+neoforge = "21.1.255"
 junit = "5.12.2"
-jei = "15.62.0.219"
+jei = "19.57.0.451"
 mixin = "0.17.3+mixin.0.8.7"
 
 [libraries]
+neoforge = { module = "net.neoforged:neoforge", version.ref = "neoforge" }
 minecraft = { module = "com.mojang:minecraft", version.ref = "minecraft" }
 fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
 fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabric-api" }
@@ -23,7 +25,7 @@ forge = { module = "net.minecraftforge:forge", version.ref = "forge" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
-jei-common-api = { module = "mezz.jei:jei-1.20.1-common-api", version.ref = "jei" }
+jei-common-api = { module = "mezz.jei:jei-1.21.1-common-api", version.ref = "jei" }
 mixin = { module = "net.fabricmc:sponge-mixin", version.ref = "mixin" }
 
 [plugins]

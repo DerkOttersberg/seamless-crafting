@@ -17,7 +17,7 @@ public class InventoryComponentCraftingMixin {
         for (ItemStack stack : inventory.items) {
             // Vanilla already accounted simple stacks; add only the protected
             // component-bearing stacks that vanilla deliberately skipped.
-            if (!stack.isEmpty() && (stack.isDamaged() || stack.isEnchanted() || stack.hasCustomHoverName())) {
+            if (!stack.isEmpty() && (stack.isDamaged() || stack.isEnchanted() || stack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME))) {
                 contents.accountStack(stack);
             }
         }

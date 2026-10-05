@@ -27,4 +27,4 @@ ordering="NONE"
 side="BOTH"
 
 [features.derk_easy_inventory_crafter]
-javaVersion="[17,)"
+javaVersion="[21,)"

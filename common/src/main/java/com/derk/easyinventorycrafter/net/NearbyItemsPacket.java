@@ -3,7 +3,7 @@ package com.derk.easyinventorycrafter.net;
 import com.derk.easyinventorycrafter.NearbyInventoryScanner.NearbyItemEntry;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import com.derk.easyinventorycrafter.net.PacketCodec;
 import com.derk.easyinventorycrafter.net.CommonPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -19,7 +19,7 @@ public record NearbyItemsPacket(
     public static final int MAX_RECIPE_STACKS = 512;
     public static final long MAX_REPORTED_COUNT = com.derk.easyinventorycrafter.NearbyInventoryScanner.MAX_REPORTED_COUNT;
     public static final Type<NearbyItemsPacket> TYPE = new Type<>(SeamlessCraftingMod.networkId("nearby_items"));
-    public static final PacketCodec<FriendlyByteBuf, NearbyItemsPacket> STREAM_CODEC = PacketCodec.of((buf, packet) -> packet.write(buf), NearbyItemsPacket::decode);
+    public static final PacketCodec<RegistryFriendlyByteBuf, NearbyItemsPacket> STREAM_CODEC = PacketCodec.of((buf, packet) -> packet.write(buf), NearbyItemsPacket::decode);
 
     public NearbyItemsPacket {
         entries = List.copyOf(entries);
@@ -40,14 +40,14 @@ public record NearbyItemsPacket(
         }
     }
 
-    public static NearbyItemsPacket decode(FriendlyByteBuf buf) {
+    public static NearbyItemsPacket decode(RegistryFriendlyByteBuf buf) {
         int entryCount = buf.readVarInt();
         if (entryCount < 0 || entryCount > MAX_ENTRIES) {
             throw new IllegalArgumentException("Invalid nearby item entry count: " + entryCount);
         }
         List<NearbyItemEntry> entries = new ArrayList<>(entryCount);
         for (int i = 0; i < entryCount; i++) {
-            ItemStack stack = buf.readItem();
+            ItemStack stack = ItemStack.STREAM_CODEC.decode(buf);
             long count = buf.readVarLong();
             if (stack.isEmpty() || count <= 0 || count > MAX_REPORTED_COUNT) {
                 throw new IllegalArgumentException("Invalid nearby item entry");
@@ -61,7 +61,7 @@ public record NearbyItemsPacket(
         }
         List<ItemStack> recipeFinderStacks = new ArrayList<>(stackCount);
         for (int i = 0; i < stackCount; i++) {
-            ItemStack stack = buf.readItem();
+            ItemStack stack = ItemStack.STREAM_CODEC.decode(buf);
             if (stack.isEmpty()) {
                 throw new IllegalArgumentException("Empty nearby recipe stack");
             }
@@ -72,16 +72,16 @@ public record NearbyItemsPacket(
         return new NearbyItemsPacket(entries, recipeFinderStacks, truncated);
     }
 
-    public void write(FriendlyByteBuf buf) {
+    public void write(RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(entries.size());
         for (NearbyItemEntry entry : entries) {
-            buf.writeItem(entry.stack());
+            ItemStack.STREAM_CODEC.encode(buf, entry.stack());
             buf.writeVarLong(entry.count());
         }
 
         buf.writeVarInt(recipeFinderStacks.size());
         for (ItemStack stack : recipeFinderStacks) {
-            buf.writeItem(stack);
+            ItemStack.STREAM_CODEC.encode(buf, stack);
         }
         buf.writeBoolean(truncated);
     }

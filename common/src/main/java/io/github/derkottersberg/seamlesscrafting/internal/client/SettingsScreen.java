@@ -135,6 +135,13 @@ public abstract class SettingsScreen extends Screen {
     public final void onClose() { this.minecraft.setScreen(this.parent); }
 
     @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // This screen paints its own background before labels below. In 1.21.1,
+        // Screen.render calls renderBackground again before rendering widgets;
+        // the vanilla blur would otherwise blur labels but leave buttons sharp.
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, this.width, this.height, 0xF010141C);
         drawFitted(graphics, this.title.getString(), this.width / 2, 12, this.width - 20, 0xFFFFFFFF, true);

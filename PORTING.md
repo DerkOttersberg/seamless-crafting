@@ -1,54 +1,34 @@
-# Porting Seamless Crafting
+# Minecraft 1.21.1 porting guide
 
-## Optional JEI in multiplayer
+One version branch holds `common`, `fabric`, `forge` and `neoforge`.
+Pins live only in `gradle/libs.versions.toml`. Java 25 hosts Gradle; Java 21
+compiles/runs Minecraft. Use regular Loom, official Mojang mappings and
+`remapJar`; named development jars are not distributable.
 
-JEI is not required by this mod. Native acceptance also runs without JEI.
-The tested optional JEI 15.62.0.219 needs MezzConfig. With Forge 47.4.26,
-MezzConfig 0.6.8 rejects a peer without its channel because its published
-`ABSENT` predicate compares Forge's `ChannelData` object to a protocol string.
-Use matching MezzConfig on clients and server for that combination; do not
-disable Forge handshake validation. This third-party requirement is not a
-SeamlessLib or Crafting runtime dependency. Fabric has a separate integration.
+Keep common code free of loader/JEI imports. Inject platform services explicitly;
+no reflective discovery, runtime Architectury API or shaded SeamlessLib.
+Preserve compatibility/registry IDs, public library packages and licensing.
 
-Minecraft and tool versions live only in `gradle/libs.versions.toml`. A normal
-Minecraft port starts by updating that catalog and compiling `common` against
-official Minecraft names before changing loader adapters.
+## Version boundaries
 
-## Stable common contracts
+1.21.1 uses item data components and registry-aware persistence,
+`RecipeHolder`/`CraftingInput`, typed `CustomPacketPayload` networking,
+`DeltaTracker` rendering and vanilla vertex APIs. Use singular data paths:
+`recipe`, `loot_table`, `tags/item`, `structure`. Never downgrade a newer world.
 
-- `PlatformServices` owns config paths and server networking.
-- `ClientPlatformServices` owns client networking and loader UI integration.
-- `SeamlessCraftingMod` and `SeamlessCraftingClientBootstrap` receive those
-  implementations explicitly.
-- Common payload records own validation bounds and common handlers own all
-  server-authoritative checks.
+## Verification
 
-Do not add Fabric, Forge, or NeoForge imports to `common`; the root
-`verifyCommonIsolation` task rejects them. Keep loader event APIs and channel
-registration inside the corresponding loader module.
+Run `clean check build` and inspect all three remapped jars. Forge 52 filters
+GameTest batch namespaces and uses `GameTestDontPrefix`; NeoForge 21 has its
+own template-prefix rules. Test-only source staging must never enter releases.
+Keep test-discovery and required-pass guards.
 
-## Rendering boundary
+Test independent installs plus dependencies, combined profiles, genuine
+packaged servers, multiplayer, save/restart, migration backups and actual
+optional integrations. Use the private WSL/Xvfb wrapper for GUI checks only;
+never steal desktop focus or inject OS mouse/keyboard input. Software OpenGL
+does not prove physical-GPU coverage; 1.21.1 has no vanilla Vulkan backend.
 
-World highlights use vanilla `RenderType`, `MultiBufferSource`, and the 1.20.1
-`LevelRenderer.renderLevel` hook. Never use raw OpenGL calls. This line has no
-26.x render-state collector or vanilla Vulkan backend.
-
-## Port checklist
-
-1. Update only `gradle/libs.versions.toml` and the pack format.
-2. Compile and test common accounting/configuration logic.
-3. Adapt mappings and render-state APIs in common without loader imports.
-4. Adapt Fabric and Forge networking/lifecycle entrypoints.
-5. Run `clean check build` and inspect every loader jar's metadata.
-6. Boot a client and dedicated server for every loader.
-7. Verify item conservation, double-chest deduplication, menu close,
-   disconnect, save/reload, and resource reload in copied worlds.
-
-## Legacy build boundary
-
-This branch uses regular `dev.architectury.loom` and official Mojang mappings.
-Compile shared sources into each loader module; do not put a remapped common jar
-on a named development runtime classpath. Both loaders need legacy mixin refmaps.
-Only loader remapped `build/libs` jars are distributable. Java 25 hosts Gradle;
-Java 17 is used for compilation and Minecraft. Keep plural 1.20.1 data directories
-and NBT item persistence; newer data components are not interchangeable.
+Icons and all-loader artifact guards are under `gradle/`.
+Historical 1.20.1/26.x helpers and acceptance are not current results. See
+[.github/RELEASE_ACCEPTANCE.md](.github/RELEASE_ACCEPTANCE.md).

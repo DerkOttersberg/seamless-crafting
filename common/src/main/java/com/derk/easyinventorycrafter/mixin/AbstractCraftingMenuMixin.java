@@ -55,7 +55,7 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
 
     @Unique
     private List<Slot> getInputGridSlots() {
-        RecipeBookMenu<?> menu = (RecipeBookMenu<?>) (Object) this;
+        RecipeBookMenu<?, ?> menu = (RecipeBookMenu<?, ?>) (Object) this;
         return menu.slots.subList(1, 1 + menu.getGridWidth() * menu.getGridHeight());
     }
 
@@ -135,7 +135,7 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
                 }
 
                 ItemStack slotStack = inputSlots.get(slotIndex).getItem();
-                if (slotStack.isEmpty() || !ItemStack.isSameItemSameTags(slotStack, withdrawal.templateStack())) {
+                if (slotStack.isEmpty() || !ItemStack.isSameItemSameComponents(slotStack, withdrawal.templateStack())) {
                     iterator.remove();
                     continue;
                 }
@@ -203,7 +203,7 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
 
                     Slot slot = inputSlots.get(slotIndex);
                     ItemStack slotStack = slot.getItem();
-                    if (slotStack.isEmpty() || !ItemStack.isSameItemSameTags(slotStack, withdrawal.templateStack())) {
+                    if (slotStack.isEmpty() || !ItemStack.isSameItemSameComponents(slotStack, withdrawal.templateStack())) {
                         iterator.remove();
                         continue;
                     }
@@ -263,9 +263,9 @@ public abstract class AbstractCraftingMenuMixin implements NearbyCraftingAccess 
     private void derk$refreshAfterNearbyTransfer() {
         List<Slot> inputSlots = getInputGridSlots();
         if (!inputSlots.isEmpty()) {
-            ((RecipeBookMenu<?>) (Object) this).slotsChanged(inputSlots.get(0).container);
+            ((RecipeBookMenu<?, ?>) (Object) this).slotsChanged(inputSlots.get(0).container);
         }
-        ((RecipeBookMenu<?>) (Object) this).broadcastChanges();
+        ((RecipeBookMenu<?, ?>) (Object) this).broadcastChanges();
         if (owner() instanceof ServerPlayer serverPlayer) {
             NearbyItemsSync.sendNearbyItems(serverPlayer);
         }

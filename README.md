@@ -1,82 +1,46 @@
 # Seamless Crafting
 
-This is the `1.20.1` source branch: **Fabric and Forge only**, with Java 17
-for Minecraft. The `26.2` and `26.3` branches remain separate; never mix their
-jars, worlds, or dependency checkouts with this line. See
-[REPOSITORY_WORKFLOW.md](REPOSITORY_WORKFLOW.md).
+Minecraft **1.21.1**, Java **21**; separate **Fabric, Forge and NeoForge** jars.
+Version `2.1.1+mc1.21.1`. Never mix these with 1.20.1 or 26.x binaries.
 
-Seamless Crafting lets the crafting table and player inventory use items from
-nearby containers. Its recipe-book integration remains server-authoritative,
-returns withdrawn items when crafting is cancelled, and can locate/highlight
-the container holding an ingredient.
+Crafts from reachable nearby containers with authoritative recipe autofill, exact-item withdrawal/return and highlighting. Fabric retains `seamless_crafting`; Forge/NeoForge retain `derk_easy_inventory_crafter`. Optional JEI 19 adapters on all three loaders register exclusions and ingredient lookup. Runtime coexistence is still under test. Crafting has no code-level SeamlessLib dependency; the owner's suite distribution requires it.
 
-Version `2.1.1+mc1.20.1` supports Minecraft Java 1.20.1 on Fabric and Forge with Java 17.
+## Build and architecture
 
-## Compatibility
+`common` holds loader-neutral code, resources and tests; `fabric`, `forge`
+and `neoforge` explicitly inject their platform services. Architectury Loom
+is build tooling only, not a runtime API. Pins are in
+`gradle/libs.versions.toml`. Gameplay composite builds use a sibling
+`seamless-api` checkout for the matching Minecraft line; the library is not shaded.
 
-- Fabric retains the established mod ID `seamless_crafting`.
-- Forge retains `derk_easy_inventory_crafter` so existing
-  installations are not silently treated as a different mod.
-- Packet identifiers retain the established Forge namespace.
-- Fabric metadata supports Fabric API `>=0.92.12 <0.93.0`; the build and CI
-  use `0.92.12+1.20.1`.
-- Legacy “Bluethooth Chest” configuration names are migrated; see
-  [MIGRATION.md](MIGRATION.md).
-
-## Architecture
-
-- `common` contains scanning, recipe availability, withdrawals/returns, UI,
-  configuration, payload contracts, rendering, mixins, and unit tests.
-- `fabric` and `forge` contain entrypoints, networking, lifecycle,
-  configuration paths, and configuration-screen registration.
-- Loader services are passed explicitly to common bootstraps. There is no
-  reflective or `ServiceLoader` discovery.
-- Architectury Loom is build tooling only; Architectury API is not required at
-  runtime.
-
-Nearby scans use vanilla container access rules plus each loader's standard
-item-storage capability. Unloaded chunks are skipped, locked or blocked chests
-are excluded, and both halves of a double chest are counted once as one 54-slot
-inventory. Exact item NBT (including enchantments and custom data) are
-preserved during display, recipe placement, cancellation, and menu close.
-
-The nearby panel adapts to the free side of the crafting UI and collapses when
-neither side fits. Optional JEI 15 adapters on both Fabric and Forge register
-GUI exclusions and ingredient lookup. JEI is not bundled or required by this mod.
-The tested JEI 15.62 runtime also needs MezzConfig 0.6.8; install JEI's own
-dependencies when enabling the viewer.
-
-## Build
-
-Run Gradle on Java 25; source and Minecraft use the Java 17 toolchain:
-
+Run Gradle with Java 25 installed; source/game tasks use Java 21:
 
 ```text
 gradlew.bat clean check build
 ```
 
-Clone matching `seamless-api` as a sibling. To build the pinned Fabric API lane:
+Distribute only remapped
+`<loader>/build/libs/seamless-crafting-2.1.1+mc1.21.1-<loader>.jar`.
+Dev/QA jars are not release files. `check` runs common tests/isolation,
+applicable loader GameTests with discovery guards, and all-loader jar checks.
 
-```text
-gradlew.bat :common:check :fabric:build -PfabricApiVersion=0.92.12+1.20.1
-```
+## Icons and settings
 
-`check` runs unit tests, both loader GameTest servers, test-discovery
-guards, common-source isolation, and exact processed/packaged metadata checks.
+All loaders reference the current CurseForge project PNG, bundled locally.
+Source URLs and SHA-256 are in `gradle/icon-provenance.json`; do not replace
+this artwork by running historical SVG generators. Fabric gameplay settings
+use optional Mod Menu 11.0.5; Forge/NeoForge use native Mods-menu adapters.
+SeamlessLib is a library with no gameplay settings screen.
 
-Loader jars are written to each loader module's `build/libs` directory as:
+## Status and migration
 
-```text
-seamless-crafting-2.1.1+mc1.20.1-fabric.jar
-seamless-crafting-2.1.1+mc1.20.1-forge.jar
-```
-
-See [PORTING.md](PORTING.md) for version-port boundaries and
-[FEATURE_PARITY_CHECKLIST.md](FEATURE_PARITY_CHECKLIST.md) for current
-verification coverage.
+Local clean builds pass across the suite: 90 unit tests and 86 loader GameTests.
+Client/UI, multiplayer, packaged-server and optional-JEI acceptance is separate:
+see [.github/RELEASE_ACCEPTANCE.md](.github/RELEASE_ACCEPTANCE.md).
+Build success is not production readiness, a GitHub push or a CurseForge release.
+See [PORTING.md](PORTING.md) and [MIGRATION.md](MIGRATION.md).
+Upgrade only backup copies of worlds/configs.
 
 ## License
 
-Seamless Crafting is released under `CC0-1.0`. The complete official CC0 1.0
-Universal legal code is included in [LICENSE.txt](LICENSE.txt) and in every
-packaged loader jar.
+Existing CC0-1.0 licensing is unchanged; see [LICENSE.txt](LICENSE.txt).

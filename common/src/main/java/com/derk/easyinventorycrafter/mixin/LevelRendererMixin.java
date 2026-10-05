@@ -40,10 +40,12 @@ public abstract class LevelRendererMixin {
     private static final float DISTANCE_LABEL_HEIGHT = 1.02f;
 
     @Inject(method = "renderLevel", at = @At("TAIL"))
-    private void derk$renderHighlights(PoseStack pose, float partialTick, long finishNanoTime,
+    private void derk$renderHighlights(net.minecraft.client.DeltaTracker delta,
             boolean outlines, Camera activeCamera, GameRenderer renderer, LightTexture lightTexture,
-            Matrix4f projection, CallbackInfo ci) {
+            Matrix4f modelView, Matrix4f projection, CallbackInfo ci) {
         Minecraft minecraft = Minecraft.getInstance();
+        PoseStack pose = new PoseStack();
+        pose.mulPose(modelView);
         if (!NearbyItemsClientState.hasHighlight() || minecraft.level == null) return;
         List<BlockPos> positions = List.copyOf(NearbyItemsClientState.getHighlightPositions());
         if (positions.isEmpty()) return;
@@ -171,9 +173,9 @@ public abstract class LevelRendererMixin {
         float x4, float y4, float z4,
         int color
     ) {
-        consumer.vertex(matrix, x1, y1, z1).color(color).endVertex();
-        consumer.vertex(matrix, x2, y2, z2).color(color).endVertex();
-        consumer.vertex(matrix, x3, y3, z3).color(color).endVertex();
-        consumer.vertex(matrix, x4, y4, z4).color(color).endVertex();
+        consumer.addVertex(matrix, x1, y1, z1).setColor(color);
+        consumer.addVertex(matrix, x2, y2, z2).setColor(color);
+        consumer.addVertex(matrix, x3, y3, z3).setColor(color);
+        consumer.addVertex(matrix, x4, y4, z4).setColor(color);
     }
 }

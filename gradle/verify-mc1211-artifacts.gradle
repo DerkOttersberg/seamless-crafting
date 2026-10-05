@@ -1,0 +1,53 @@
+// Verify the actual distributables, including the exact canonical CurseForge artwork.
+tasks.register('verifyMc1211Artifacts') {
+    group = 'verification'
+    dependsOn ':fabric:remapJar', ':forge:remapJar', ':neoforge:remapJar'
+    doLast {
+        def identity = new groovy.json.JsonSlurper().parse(rootProject.file('gradle/icon-provenance.json'))
+        def metadataPaths = [fabric:'fabric.mod.json', forge:'META-INF/mods.toml', neoforge:'META-INF/neoforge.mods.toml']
+        metadataPaths.each { loader, metadataPath ->
+            def archive = project(":${loader}").tasks.named('remapJar').get().archiveFile.get().asFile
+            assert archive.name == "${rootProject.archives_base_name}-${project.version}-${loader}.jar"
+            new java.util.zip.ZipFile(archive).withCloseable { zip ->
+                assert zip.getEntry(metadataPath) != null
+                metadataPaths.values().findAll { it != metadataPath }.each { assert zip.getEntry(it) == null }
+                assert zip.getEntry(identity.commonClass) != null
+                assert !zip.entries().any { it.name.contains('/gametest/') || it.name.endsWith('GameTestConfigAccess.class') }
+                if (identity.fabricId != 'seamlessapi') assert !zip.entries().any { it.name.startsWith('com/derko/seamlessapi/') }
+                zip.entries().findAll { it.name.endsWith('.class') }.each { entry ->
+                    new DataInputStream(zip.getInputStream(entry)).withCloseable { header ->
+                        assert header.readInt() == -889275714
+                        header.readUnsignedShort()
+                        assert header.readUnsignedShort() <= 65
+                    }
+                }
+                def icon = zip.getEntry(identity.asset)
+                assert icon != null
+                def iconBytes = zip.getInputStream(icon).bytes
+                assert java.security.MessageDigest.getInstance('SHA-256').digest(iconBytes).encodeHex().toString().equalsIgnoreCase(identity.sha256)
+                def metadata = zip.getInputStream(zip.getEntry(metadataPath)).getText('UTF-8')
+                assert !metadata.contains('${')
+                if (loader == 'fabric') {
+                    def parsed = new groovy.json.JsonSlurper().parseText(metadata)
+                    assert parsed.id == identity.fabricId && parsed.version == project.version.toString()
+                    assert parsed.license == identity.license && parsed.icon == identity.asset
+                    assert parsed.depends.minecraft == libs.versions.minecraft.get() && parsed.depends.java == '>=21'
+                    assert parsed.depends.fabricloader == '>=0.19.5'
+                    if (identity.fabricId != 'seamlessapi') {
+                        assert parsed.suggests.modmenu == ">=${libs.versions.modmenu.get()} <${libs.versions.modmenu.get().tokenize('.')[0].toInteger() + 1}.0.0"
+                    }
+                } else {
+                    assert metadata.contains("modId=\"${identity.fmlId}\"")
+                    assert metadata.contains("version=\"${project.version}\"")
+                    assert metadata.contains("license=\"${identity.license}\"")
+                    assert metadata.contains("logoFile=\"${identity.asset}\"")
+                    assert !metadata.contains('iconFile=')
+                    assert metadata.contains('versionRange="[1.21.1]"') && metadata.contains('javaVersion="[21,)"')
+                    assert metadata.contains(loader == 'forge' ? 'versionRange="[52.1.16,53)"' : 'versionRange="[21.1.255,21.2)"')
+                }
+                logger.lifecycle("Verified ${archive.name}: ${loader} metadata + canonical CurseForge icon")
+            }
+        }
+    }
+}
+tasks.named('check') { dependsOn 'verifyMc1211Artifacts' }

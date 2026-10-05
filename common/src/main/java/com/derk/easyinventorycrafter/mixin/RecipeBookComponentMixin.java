@@ -5,7 +5,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
 import net.minecraft.client.gui.screens.recipebook.RecipeBookPage;
 import net.minecraft.world.inventory.RecipeBookMenu;
-import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -17,9 +17,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(RecipeBookComponent.class)
 public abstract class RecipeBookComponentMixin implements NearbyRecipeBookComponentAccess {
     @Shadow private RecipeBookPage recipeBookPage;
-    @Shadow protected RecipeBookMenu<?> menu;
+    @Shadow protected RecipeBookMenu<?, ?> menu;
     @Shadow public abstract boolean isVisible();
-    @Unique private Recipe<?> derk$lastRecipe;
+    @Unique private RecipeHolder<?> derk$lastRecipe;
 
     @Invoker("updateStackedContents")
     protected abstract void derk$invokeUpdateStackedContents();

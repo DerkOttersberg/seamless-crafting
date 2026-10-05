@@ -290,7 +290,7 @@ public final class NearbyPanelController {
             || stack.is(ItemTags.EMERALD_ORES)) {
             return 1;
         }
-        return stack.isEdible() ? 2 : 3;
+        return stack.has(net.minecraft.core.component.DataComponents.FOOD) ? 2 : 3;
     }
 
     private static String formatCount(long count) {

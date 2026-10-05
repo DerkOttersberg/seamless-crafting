@@ -22,5 +22,5 @@ gradle.beforeProject { project ->
 }
 
 rootProject.name = 'seamless-crafting'
-include 'common', 'fabric', 'forge'
+include 'common', 'fabric', 'forge', 'neoforge'
 includeBuild('../seamless-api')

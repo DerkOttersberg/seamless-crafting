@@ -1,5 +1,5 @@
 modLoader="javafml"
-loaderVersion="[47,)"
+loaderVersion="[52,)"
 license="CC0-1.0"
 
 [[mods]]
@@ -18,13 +18,13 @@ side="SERVER"
 [[dependencies.derk_easy_inventory_crafter_gametest]]
 modId="forge"
 mandatory=true
-versionRange="[47.1,48)"
+versionRange="[52.1.16,53)"
 ordering="NONE"
 side="SERVER"
 
 [[dependencies.derk_easy_inventory_crafter_gametest]]
 modId="minecraft"
 mandatory=true
-versionRange="[1.20.1,1.20.2)"
+versionRange="[1.21.1]"
 ordering="NONE"
 side="SERVER"

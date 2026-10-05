@@ -1,6 +1,10 @@
 {
   "pack": {
-    "description": "Seamless Crafting resources",
-    "pack_format": 15
+    "pack_format": 34,
+    "supported_formats": [
+      34,
+      48
+    ],
+    "description": "Seamless Crafting resources"
   }
 }
