@@ -1,6 +1,6 @@
 modLoader="javafml"
 loaderVersion="${loader_version_range}"
-license="CC0-1.0"
+license="All Rights Reserved"
 issueTrackerURL="https://github.com/DerkOttersberg/seamless-crafting/issues"
 
 [[mods]]
