@@ -1,4 +1,24 @@
-# Minecraft 1.21.1 acceptance — in progress
+# Minecraft 1.21.1 acceptance — locally accepted
+
+Final acceptance — 5 October 2026, 18:34 UTC: exact corrected r2 jars pass all
+three-loader builds/metadata/icon guards, 90 unit and 86 required loader tests,
+packaged server restart/migration, all 12 independent native gameplay clients,
+three multi-scale settings/icon clients, three installed-JEI combined clients
+and three real two-client combined multiplayer suites (26 phases). See workspace
+`qa-artifacts/mc1.21.1/ACCEPTANCE.md` and exact jar hashes/source commits in
+`release-candidates/mc1.21.1/built-20261005-r2/artifacts.json`.
+QA uses private software OpenGL, not every GPU, resource pack or third-party
+modpack. No hosted CI or remote GitHub change is claimed. Publication is separate.
+Earlier progress descriptions below are retained history, not current blockers.
+
+Evening update: final r2 production jars now pass genuine native Fabric/Forge/
+NeoForge two-client multiplayer (26 phases), actual multi-scale Mods/settings
+menus with sharp text and exact icons, and installed JEI runtime integration.
+Exact logs/screenshots/installed-jar hashes are in workspace
+`qa-artifacts/mc1.21.1/{multiplayer,settings,jei}`. Local source commits and API
+suite-lock are frozen; no remote push or upload. Earlier pending descriptions
+below are retained historical progress, not the latest gate status. Remaining
+native independent installs still prevent full production acceptance.
 
 Active suite: SeamlessLib, Meteors, Workbench, Crafting, Throw Weapons.
 Retired Block Animations and experimental Comfort are excluded.
