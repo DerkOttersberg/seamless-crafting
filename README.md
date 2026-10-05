@@ -76,6 +76,9 @@ verification coverage.
 
 ## License
 
-Seamless Crafting is released under `CC0-1.0`. The complete official CC0 1.0
-Universal legal code is included in [LICENSE.txt](LICENSE.txt) and in every
-packaged loader jar.
+**All Rights Reserved** for new original material owned by Derk Ottersberg.
+See [LICENSE.txt](LICENSE.txt) and [licensing history](LICENSES/README.md) for prior-license and third-party exceptions.
+
+Public source may be viewed and forked on GitHub. Issues and pull requests are welcome;
+write access to this repository is reserved for the owner.
+
